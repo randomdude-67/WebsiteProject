@@ -1,0 +1,2991 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mindustry Clone</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #1a1a2e;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+        }
+
+        /* Top Resource Bar */
+        #resource-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50px;
+            background: linear-gradient(180deg, rgba(22, 33, 62, 0.95) 0%, rgba(22, 33, 62, 0.8) 100%);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            gap: 20px;
+            z-index: 100;
+            border-bottom: 2px solid #333;
+        }
+
+        .resource-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 12px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+
+        .resource-icon {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+        }
+
+        .resource-count {
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            min-width: 40px;
+        }
+
+        #wave-display {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        #wave-display span {
+            color: #ff6b6b;
+            font-size: 14px;
+        }
+
+        #player-health-bar {
+            width: 150px;
+            height: 20px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #player-health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.2s;
+        }
+
+        #player-health-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 11px;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        /* Bottom Build Bar */
+        #build-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(0deg, rgba(22, 33, 62, 0.95) 0%, rgba(22, 33, 62, 0.8) 100%);
+            z-index: 100;
+            border-top: 2px solid #333;
+        }
+
+        #category-tabs {
+            display: flex;
+            gap: 5px;
+            padding: 8px 15px;
+            border-bottom: 1px solid #444;
+        }
+
+        .category-tab {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            border-radius: 5px 5px 0 0;
+            color: #aaa;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .category-tab:hover {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+
+        .category-tab.active {
+            background: rgba(76, 175, 80, 0.3);
+            color: #4CAF50;
+        }
+
+        #building-grid {
+            display: flex;
+            gap: 8px;
+            padding: 12px 15px;
+            flex-wrap: wrap;
+        }
+
+        .build-btn {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #444;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: inherit;
+        }
+
+        .build-btn:hover {
+            transform: scale(1.05);
+            border-color: #666;
+        }
+
+        .build-btn.selected {
+            border-color: #4CAF50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+        }
+
+        .build-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .build-btn .icon {
+            font-size: 24px;
+        }
+
+        .build-btn .name {
+            font-size: 8px;
+            color: #fff;
+            margin-top: 2px;
+        }
+
+        .build-btn .hotkey {
+            position: absolute;
+            top: 2px;
+            right: 4px;
+            font-size: 9px;
+            color: #888;
+        }
+
+        .build-btn .cost {
+            position: absolute;
+            bottom: 2px;
+            font-size: 8px;
+            color: #aaa;
+        }
+
+        /* Minimap */
+        #minimap {
+            position: fixed;
+            bottom: 130px;
+            right: 10px;
+            width: 150px;
+            height: 112px;
+            background: rgba(0,0,0,0.7);
+            border: 2px solid #444;
+            border-radius: 5px;
+            z-index: 90;
+        }
+
+        /* Tooltip - fixed in bottom right */
+        .tooltip {
+            position: fixed;
+            bottom: 130px;
+            right: 170px;
+            background: rgba(0,0,0,0.95);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            min-width: 180px;
+            max-width: 280px;
+            border: 2px solid #4CAF50;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            display: none;
+        }
+
+        .tooltip-title {
+            font-weight: bold;
+            font-size: 14px;
+            color: #4CAF50;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 6px;
+        }
+
+        .tooltip-stat {
+            margin: 4px 0;
+            color: #ccc;
+        }
+
+        .tooltip-stat-label {
+            color: #888;
+        }
+
+        /* Info panel */
+        #info-panel {
+            position: fixed;
+            top: 60px;
+            left: 10px;
+            background: rgba(22, 33, 62, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            color: #aaa;
+            font-size: 10px;
+            z-index: 90;
+            max-width: 180px;
+        }
+
+        #info-panel b {
+            color: #4CAF50;
+        }
+    </style>
+</head>
+<body>
+    <!-- Top Resource Bar -->
+    <div id="resource-bar">
+        <div class="resource-item">
+            <div class="resource-icon" style="background: #d4a574;"></div>
+            <span class="resource-count" id="copper-count">100</span>
+        </div>
+        <div class="resource-item">
+            <div class="resource-icon" style="background: #7799aa;"></div>
+            <span class="resource-count" id="lead-count">50</span>
+        </div>
+        <div class="resource-item">
+            <div class="resource-icon" style="background: #444;"></div>
+            <span class="resource-count" id="coal-count">0</span>
+        </div>
+        <div class="resource-item">
+            <div class="resource-icon" style="background: #4a7c9b;"></div>
+            <span class="resource-count" id="titanium-count">0</span>
+        </div>
+        <div class="resource-item">
+            <div class="resource-icon" style="background: linear-gradient(135deg, #d4a574, #7799aa);"></div>
+            <span class="resource-count" id="alloy-count">0</span>
+        </div>
+
+        <div id="wave-display">
+            <span>Wave: <b id="wave-num">0</b></span>
+            <span>Enemies: <b id="enemy-count">0</b></span>
+            <span>Next: <b id="next-wave">60s</b></span>
+            <div id="player-health-bar">
+                <div id="player-health-fill" style="width: 100%"></div>
+                <span id="player-health-text">Ship: 100%</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Build Bar -->
+    <div id="build-bar">
+        <div id="category-tabs">
+            <button class="category-tab active" data-category="production">Production</button>
+            <button class="category-tab" data-category="transport">Transport</button>
+            <button class="category-tab" data-category="power">Power</button>
+            <button class="category-tab" data-category="defense">Defense</button>
+            <button class="category-tab" data-category="tools">Tools</button>
+        </div>
+        <div id="building-grid"></div>
+    </div>
+
+    <!-- Minimap -->
+    <canvas id="minimap"></canvas>
+
+    <!-- Info Panel -->
+    <div id="info-panel">
+        <b>Controls:</b><br>
+        WASD - Move ship<br>
+        Click - Place building<br>
+        Drag - Place multiple<br>
+        Right-click - Delete<br>
+        R - Rotate<br>
+        Space - Start wave<br>
+        <br>
+        <b>Tips:</b><br>
+        Drills mine ore deposits<br>
+        Conveyors transport to core<br>
+        Duo uses copper, Scatter uses lead<br>
+        Feed ammo via conveyors!<br>
+        Arc turrets need power
+    </div>
+
+    <div id="tooltip" class="tooltip"></div>
+
+    <div id="game"></div>
+
+    <script>
+        // Game Constants
+        const TILE_SIZE = 32;
+        const MAP_WIDTH = 60;
+        const MAP_HEIGHT = 45;
+
+        // Player ship
+        let player = {
+            x: MAP_WIDTH * TILE_SIZE / 2,
+            y: MAP_HEIGHT * TILE_SIZE / 2,
+            health: 100,
+            maxHealth: 100,
+            speed: 5,
+            angle: 0,
+            respawnTimer: 0,
+            invulnerable: 0,
+            deaths: 0
+        };
+
+        // Camera
+        let camera = { x: 0, y: 0 };
+
+        // Resources
+        let resources = {
+            copper: 100,
+            lead: 50,
+            coal: 0,
+            titanium: 0,
+            alloy: 0
+        };
+
+        // Terrain types
+        const TERRAIN = {
+            GRASS: 0,
+            SAND: 1,
+            WATER: 2,
+            STONE: 3,
+            DARK_STONE: 4
+        };
+
+        // Building definitions with categories
+        const BUILDINGS = {
+            drill: {
+                category: 'production', cost: { copper: 8 }, health: 40,
+                icon: '⛏', name: 'Drill', hotkey: '1',
+                desc: 'Mines ore deposits', mineSpeed: 1
+            },
+            'pneumatic-drill': {
+                category: 'production', cost: { copper: 15, lead: 10 }, health: 50,
+                icon: '⚙', name: 'P-Drill', hotkey: '2',
+                desc: 'Fast mining 2x speed', mineSpeed: 2
+            },
+            'alloy-drill': {
+                category: 'production', cost: { alloy: 15, titanium: 10 }, health: 80,
+                icon: '🔩', name: 'A-Drill', hotkey: null,
+                desc: 'Alloy drill 4x speed', mineSpeed: 4
+            },
+            'alloy-factory': {
+                category: 'production', cost: { copper: 30, lead: 30 }, health: 60,
+                icon: '🏭', name: 'Alloy Factory', hotkey: null,
+                desc: 'Combines copper+lead into alloy (needs power)', craftTime: 3000, powerUse: 3
+            },
+            conveyor: {
+                category: 'transport', cost: { copper: 1 }, health: 20,
+                icon: '➡', name: 'Conveyor', hotkey: '3',
+                desc: 'Moves items in one direction'
+            },
+            'alloy-conveyor': {
+                category: 'transport', cost: { alloy: 1 }, health: 40,
+                icon: '⇒', name: 'A-Conveyor', hotkey: null,
+                desc: 'Fast alloy conveyor 2x speed', speedMult: 2
+            },
+            router: {
+                category: 'transport', cost: { copper: 5 }, health: 30,
+                icon: '✚', name: 'Router', hotkey: '4',
+                desc: 'Splits items 3 ways'
+            },
+            junction: {
+                category: 'transport', cost: { copper: 3, lead: 3 }, health: 25,
+                icon: '╋', name: 'Junction', hotkey: '5',
+                desc: 'Items pass through'
+            },
+            generator: {
+                category: 'power', cost: { copper: 20, lead: 10 }, health: 60,
+                icon: '🔥', name: 'Generator', hotkey: '6',
+                desc: 'Burns coal for power', powerOutput: 10, coalConsume: 0.1
+            },
+            'power-node': {
+                category: 'power', cost: { copper: 5, lead: 5 }, health: 30,
+                icon: '⚡', name: 'P-Node', hotkey: '7',
+                desc: 'Distributes power', powerRange: 6
+            },
+            turret: {
+                category: 'defense', cost: { copper: 20 }, health: 50,
+                icon: '🔫', name: 'Duo', hotkey: '8',
+                desc: 'Rapid fire turret (uses copper)', damage: 8, range: 6, cooldown: 400, ammoType: 'copper', ammoUse: 1
+            },
+            scatter: {
+                category: 'defense', cost: { copper: 30, lead: 20 }, health: 60,
+                icon: '💥', name: 'Scatter', hotkey: '9',
+                desc: 'Fires 3 shot spread (uses lead)', damage: 4, range: 7, cooldown: 150, shots: 3, ammoType: 'lead', ammoUse: 2
+            },
+            laser: {
+                category: 'defense', cost: { copper: 40, lead: 30 }, health: 45,
+                icon: '⚡', name: 'Arc', hotkey: '0',
+                desc: 'Electric arc (needs power)', damage: 15, range: 8, cooldown: 800, powerUse: 5
+            },
+            wall: {
+                category: 'defense', cost: { copper: 5 }, health: 80,
+                icon: '▪', name: 'Wall', hotkey: 'Q',
+                desc: 'Basic defense'
+            },
+            'titanium-wall': {
+                category: 'defense', cost: { titanium: 5 }, health: 200,
+                icon: '▣', name: 'Ti-Wall', hotkey: 'E',
+                desc: 'Strong titanium wall'
+            },
+            'alloy-wall': {
+                category: 'defense', cost: { alloy: 8 }, health: 350,
+                icon: '▦', name: 'A-Wall', hotkey: null,
+                desc: 'Reinforced alloy wall'
+            },
+            'alloy-turret': {
+                category: 'defense', cost: { alloy: 25, titanium: 15 }, health: 100,
+                icon: '🎯', name: 'Salvo', hotkey: null,
+                desc: 'Rapid alloy turret (uses alloy)', damage: 12, range: 8, cooldown: 250, ammoType: 'alloy', ammoUse: 1
+            },
+            explosive: {
+                category: 'defense', cost: { copper: 15, coal: 10 }, health: 30,
+                icon: '💣', name: 'Bomb', hotkey: 'B',
+                desc: 'Explodes when destroyed!', explosionDamage: 80, explosionRange: 3
+            },
+            repair: {
+                category: 'defense', cost: { copper: 25, lead: 15 }, health: 40,
+                icon: '🔧', name: 'Repair', hotkey: 'F',
+                desc: 'Repairs nearby buildings', repairRange: 5
+            },
+            delete: {
+                category: 'tools', cost: {}, health: 0,
+                icon: '🗑', name: 'Delete', hotkey: 'X',
+                desc: 'Remove buildings'
+            }
+        };
+
+        // Game state
+        let selectedBuilding = null;
+        let currentCategory = 'production';
+        let rotation = 0;
+        let buildings = [];
+        let enemies = [];
+        let bullets = [];
+        let enemyBullets = [];
+        let items = [];
+        let particles = [];
+        let wave = 0;
+        let waveTimer = 60;
+        let coreHealth = 500;
+        let maxCoreHealth = 500;
+        let gameOver = false;
+        let isDragging = false;
+        let lastDragTile = null;
+
+        // Map data
+        let map = [];
+        let oreMap = [];
+        let terrainMap = [];
+
+        // Spawn point
+        let spawnPoint = { x: 5, y: 5 };
+
+        // Power system
+        let powerGrid = { production: 0, consumption: 0 };
+
+        // Phaser Config
+        const config = {
+            type: Phaser.AUTO,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            parent: 'game',
+            backgroundColor: '#1a1a2e',
+            scene: {
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        const game = new Phaser.Game(config);
+        let graphics, scene;
+        let keys = {};
+
+        function preload() {}
+
+        function create() {
+            scene = this;
+            graphics = this.add.graphics();
+
+            // Generate terrain and map
+            generateTerrain();
+            generateMap();
+
+            // Place core in center
+            const coreX = Math.floor(MAP_WIDTH / 2);
+            const coreY = Math.floor(MAP_HEIGHT / 2);
+            placeCore(coreX, coreY);
+
+            // Set spawn point in corner
+            spawnPoint = { x: 3, y: 3 };
+
+            // Center camera on player initially
+            player.x = (coreX + 1) * TILE_SIZE;
+            player.y = (coreY + 1) * TILE_SIZE;
+
+            // Input handling
+            this.input.on('pointerdown', handlePointerDown);
+            this.input.on('pointermove', handlePointerMove);
+            this.input.on('pointerup', handlePointerUp);
+
+            // Disable context menu
+            this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
+
+            // Keyboard
+            keys = {
+                W: this.input.keyboard.addKey('W'),
+                A: this.input.keyboard.addKey('A'),
+                S: this.input.keyboard.addKey('S'),
+                D: this.input.keyboard.addKey('D'),
+                R: this.input.keyboard.addKey('R'),
+                SPACE: this.input.keyboard.addKey('SPACE')
+            };
+
+            this.input.keyboard.on('keydown-R', () => { rotation = (rotation + 1) % 4; });
+            this.input.keyboard.on('keydown-SPACE', startWaveEarly);
+
+            // Building hotkeys
+            Object.entries(BUILDINGS).forEach(([type, data]) => {
+                if (data.hotkey) {
+                    const keyCode = data.hotkey === '0' ? 'ZERO' :
+                                   data.hotkey === '1' ? 'ONE' :
+                                   data.hotkey === '2' ? 'TWO' :
+                                   data.hotkey === '3' ? 'THREE' :
+                                   data.hotkey === '4' ? 'FOUR' :
+                                   data.hotkey === '5' ? 'FIVE' :
+                                   data.hotkey === '6' ? 'SIX' :
+                                   data.hotkey === '7' ? 'SEVEN' :
+                                   data.hotkey === '8' ? 'EIGHT' :
+                                   data.hotkey === '9' ? 'NINE' : data.hotkey;
+                    this.input.keyboard.on('keydown-' + keyCode, () => selectBuilding(type));
+                }
+            });
+
+            // Setup UI
+            setupBuildUI();
+            setupCategoryTabs();
+
+            // Timers
+            this.time.addEvent({ delay: 1000, callback: updateWaveTimer, loop: true });
+            this.time.addEvent({ delay: 1500, callback: produceTick, loop: true });
+            // Items now updated smoothly in main update loop
+            this.time.addEvent({ delay: 1000, callback: repairTick, loop: true });
+            this.time.addEvent({ delay: 500, callback: powerTick, loop: true });
+        }
+
+        function generateTerrain() {
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                terrainMap[y] = [];
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    // Use noise-like function for terrain
+                    const noise = Math.sin(x * 0.15) * Math.cos(y * 0.15) +
+                                  Math.sin(x * 0.08 + 1) * Math.cos(y * 0.12 + 2) * 0.5;
+
+                    // Water near edges
+                    const edgeDist = Math.min(x, y, MAP_WIDTH - x - 1, MAP_HEIGHT - y - 1);
+
+                    if (edgeDist < 3 && Math.random() < 0.4) {
+                        terrainMap[y][x] = TERRAIN.WATER;
+                    } else if (noise > 0.6) {
+                        terrainMap[y][x] = TERRAIN.STONE;
+                    } else if (noise > 0.4) {
+                        terrainMap[y][x] = TERRAIN.DARK_STONE;
+                    } else if (noise < -0.3) {
+                        terrainMap[y][x] = TERRAIN.SAND;
+                    } else {
+                        terrainMap[y][x] = TERRAIN.GRASS;
+                    }
+                }
+            }
+
+            // Clear center area for core
+            const cx = Math.floor(MAP_WIDTH / 2);
+            const cy = Math.floor(MAP_HEIGHT / 2);
+            for (let dy = -3; dy <= 4; dy++) {
+                for (let dx = -3; dx <= 4; dx++) {
+                    if (cy + dy >= 0 && cy + dy < MAP_HEIGHT && cx + dx >= 0 && cx + dx < MAP_WIDTH) {
+                        terrainMap[cy + dy][cx + dx] = TERRAIN.DARK_STONE;
+                    }
+                }
+            }
+        }
+
+        function generateMap() {
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                map[y] = [];
+                oreMap[y] = [];
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    map[y][x] = 0;
+                    oreMap[y][x] = null;
+                }
+            }
+
+            // Generate ore clusters
+            const oreTypes = [
+                { type: 'copper', count: 12, size: 8 },
+                { type: 'lead', count: 8, size: 6 },
+                { type: 'coal', count: 6, size: 5 },
+                { type: 'titanium', count: 3, size: 4 }
+            ];
+
+            oreTypes.forEach(ore => {
+                for (let i = 0; i < ore.count; i++) {
+                    const cx = Math.floor(Math.random() * (MAP_WIDTH - 6)) + 3;
+                    const cy = Math.floor(Math.random() * (MAP_HEIGHT - 6)) + 3;
+
+                    for (let j = 0; j < ore.size; j++) {
+                        const ox = cx + Math.floor(Math.random() * 4) - 2;
+                        const oy = cy + Math.floor(Math.random() * 4) - 2;
+                        if (ox >= 0 && ox < MAP_WIDTH && oy >= 0 && oy < MAP_HEIGHT) {
+                            if (terrainMap[oy][ox] !== TERRAIN.WATER) {
+                                oreMap[oy][ox] = ore.type;
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function placeCore(x, y) {
+            for (let dy = 0; dy < 2; dy++) {
+                for (let dx = 0; dx < 2; dx++) {
+                    map[y + dy][x + dx] = 'core';
+                    oreMap[y + dy][x + dx] = null;
+                }
+            }
+            buildings.push({
+                type: 'core',
+                x: x, y: y,
+                width: 2, height: 2,
+                health: maxCoreHealth,
+                maxHealth: maxCoreHealth
+            });
+        }
+
+        function setupCategoryTabs() {
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    currentCategory = tab.dataset.category;
+                    renderBuildingGrid();
+                });
+            });
+        }
+
+        function setupBuildUI() {
+            renderBuildingGrid();
+        }
+
+        function renderBuildingGrid() {
+            const grid = document.getElementById('building-grid');
+            grid.innerHTML = '';
+
+            Object.entries(BUILDINGS).forEach(([type, data]) => {
+                if (data.category !== currentCategory) return;
+
+                const btn = document.createElement('button');
+                btn.className = 'build-btn';
+                btn.dataset.type = type;
+                btn.style.background = getBuildingColor(type);
+
+                btn.innerHTML = `
+                    <span class="hotkey">${data.hotkey}</span>
+                    <span class="icon">${data.icon}</span>
+                    <span class="name">${data.name}</span>
+                    <span class="cost">${getCostString(data.cost)}</span>
+                `;
+
+                btn.onclick = () => selectBuilding(type);
+
+                if (selectedBuilding === type) {
+                    btn.classList.add('selected');
+                }
+
+                if (!canAfford(type)) {
+                    btn.disabled = true;
+                }
+
+                grid.appendChild(btn);
+            });
+        }
+
+        function getBuildingColor(type) {
+            const colors = {
+                drill: 'linear-gradient(135deg, #8B4513, #654321)',
+                'pneumatic-drill': 'linear-gradient(135deg, #B87333, #8B5A2B)',
+                'alloy-drill': 'linear-gradient(135deg, #b8967a, #8a6a5a)',
+                'alloy-factory': 'linear-gradient(135deg, #887766, #665544)',
+                conveyor: 'linear-gradient(135deg, #555, #333)',
+                'alloy-conveyor': 'linear-gradient(135deg, #b8967a, #8a6a5a)',
+                router: 'linear-gradient(135deg, #666699, #444477)',
+                junction: 'linear-gradient(135deg, #996666, #774444)',
+                generator: 'linear-gradient(135deg, #ff8800, #cc5500)',
+                'power-node': 'linear-gradient(135deg, #ffcc00, #cc9900)',
+                turret: 'linear-gradient(135deg, #cc3333, #991111)',
+                scatter: 'linear-gradient(135deg, #cc6633, #994411)',
+                'alloy-turret': 'linear-gradient(135deg, #b8967a, #cc5555)',
+                laser: 'linear-gradient(135deg, #3366cc, #224499)',
+                wall: 'linear-gradient(135deg, #555, #333)',
+                'titanium-wall': 'linear-gradient(135deg, #4a7c9b, #2a5c7b)',
+                'alloy-wall': 'linear-gradient(135deg, #b8967a, #8a6a5a)',
+                explosive: 'linear-gradient(135deg, #ff6600, #cc3300)',
+                repair: 'linear-gradient(135deg, #339933, #227722)',
+                delete: 'linear-gradient(135deg, #ff4444, #cc2222)'
+            };
+            return colors[type] || '#444';
+        }
+
+        function getCostString(cost) {
+            if (!cost || Object.keys(cost).length === 0) return '';
+            return Object.entries(cost).map(([res, amt]) => {
+                const abbrev = { copper: 'Cu', lead: 'Pb', coal: 'C', titanium: 'Ti', alloy: 'Al' };
+                return amt + abbrev[res];
+            }).join(' ');
+        }
+
+        function selectBuilding(type) {
+            selectedBuilding = type;
+            renderBuildingGrid();
+
+            // Switch to correct category
+            if (type && BUILDINGS[type]) {
+                const cat = BUILDINGS[type].category;
+                if (cat !== currentCategory) {
+                    currentCategory = cat;
+                    document.querySelectorAll('.category-tab').forEach(t => {
+                        t.classList.toggle('active', t.dataset.category === cat);
+                    });
+                    renderBuildingGrid();
+                }
+            }
+        }
+
+        function canAfford(type) {
+            const data = BUILDINGS[type];
+            if (!data || !data.cost) return true;
+            for (let res in data.cost) {
+                if ((resources[res] || 0) < data.cost[res]) return false;
+            }
+            return true;
+        }
+
+        function spend(type) {
+            const data = BUILDINGS[type];
+            if (!data || !data.cost) return;
+            for (let res in data.cost) {
+                resources[res] -= data.cost[res];
+            }
+            updateResourceUI();
+        }
+
+        function screenToWorld(screenX, screenY) {
+            return {
+                x: screenX + camera.x,
+                y: screenY + camera.y
+            };
+        }
+
+        function worldToTile(worldX, worldY) {
+            return {
+                x: Math.floor(worldX / TILE_SIZE),
+                y: Math.floor(worldY / TILE_SIZE)
+            };
+        }
+
+        function handlePointerDown(pointer) {
+            if (gameOver) return;
+
+            const world = screenToWorld(pointer.x, pointer.y);
+            const tile = worldToTile(world.x, world.y);
+
+            if (pointer.rightButtonDown()) {
+                // Right click - deselect or delete
+                if (selectedBuilding) {
+                    selectBuilding(null);
+                } else {
+                    deleteBuilding(tile.x, tile.y);
+                }
+                return;
+            }
+
+            // Start drag placement
+            isDragging = true;
+            lastDragTile = tile;
+            tryPlaceBuilding(tile.x, tile.y);
+        }
+
+        function handlePointerMove(pointer) {
+            if (!isDragging || !selectedBuilding || selectedBuilding === 'delete') return;
+
+            const world = screenToWorld(pointer.x, pointer.y);
+            const tile = worldToTile(world.x, world.y);
+
+            if (lastDragTile && (tile.x !== lastDragTile.x || tile.y !== lastDragTile.y)) {
+                tryPlaceBuilding(tile.x, tile.y);
+                lastDragTile = tile;
+            }
+
+            // Update tooltip
+            updateTooltip(pointer, tile);
+        }
+
+        function handlePointerUp() {
+            isDragging = false;
+            lastDragTile = null;
+        }
+
+        function updateTooltip(pointer, tile) {
+            const tooltip = document.getElementById('tooltip');
+
+            if (tile.x >= 0 && tile.x < MAP_WIDTH && tile.y >= 0 && tile.y < MAP_HEIGHT) {
+                const building = buildings.find(b =>
+                    (b.x === tile.x && b.y === tile.y) ||
+                    (b.type === 'core' && tile.x >= b.x && tile.x < b.x + 2 && tile.y >= b.y && tile.y < b.y + 2)
+                );
+
+                if (building) {
+                    const data = BUILDINGS[building.type] || { desc: 'Your main base - protect it!', health: 500 };
+                    const healthPct = Math.ceil((building.health / building.maxHealth) * 100);
+                    const healthColor = healthPct > 50 ? '#4CAF50' : (healthPct > 25 ? '#ffaa00' : '#ff4444');
+
+                    let html = `<div class="tooltip-title">${building.type === 'core' ? 'Core' : data.name}</div>`;
+                    html += `<div class="tooltip-stat">${data.desc}</div>`;
+                    html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Health:</span> <span style="color:${healthColor}">${Math.ceil(building.health)}/${building.maxHealth}</span></div>`;
+
+                    if (data.damage) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Damage:</span> ${data.damage}</div>`;
+                    if (data.range) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Range:</span> ${data.range} tiles</div>`;
+                    if (data.cooldown) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Fire rate:</span> ${(1000/data.cooldown).toFixed(1)}/s</div>`;
+                    if (data.ammoType) {
+                        const ammoColor = getOreColorCSS(data.ammoType);
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Ammo type:</span> <span style="color:${ammoColor}">${data.ammoType}</span></div>`;
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Ammo/shot:</span> ${data.ammoUse}</div>`;
+                    }
+                    if (building.ammo !== undefined) {
+                        const hasAmmo = building.ammo > 0;
+                        const ammoPct = (building.ammo / (building.maxAmmo || 20)) * 100;
+                        const ammoBarColor = ammoPct > 30 ? '#4CAF50' : '#ff4444';
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Ammo:</span> <span style="color:${ammoBarColor}">${building.ammo}/${building.maxAmmo || 20}</span></div>`;
+                        if (!hasAmmo) html += `<div class="tooltip-stat" style="color:#ff8844">⚠ Feed ${BUILDINGS[building.type]?.ammoType || 'ammo'} via conveyor!</div>`;
+                    }
+                    if (data.powerUse) {
+                        const powered = building.powered;
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power:</span> <span style="color:${powered ? '#4CAF50' : '#ff4444'}">${powered ? '✓ Connected' : '✗ NONE'}</span></div>`;
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power use:</span> ${data.powerUse}</div>`;
+                    }
+                    if (data.powerOutput) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power output:</span> ${data.powerOutput}</div>`;
+                    if (building.ore) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Mining:</span> <span style="color:${getOreColorCSS(building.ore)}">${building.ore}</span></div>`;
+                    if (data.mineSpeed) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Mine speed:</span> ${data.mineSpeed}x</div>`;
+                    if (building.coalStored !== undefined) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Coal stored:</span> ${Math.floor(building.coalStored)}</div>`;
+                    if (data.repairRange) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Repair range:</span> ${data.repairRange} tiles</div>`;
+
+                    // Position info
+                    html += `<div class="tooltip-stat" style="margin-top:8px;color:#666;font-size:10px">Position: (${building.x}, ${building.y})</div>`;
+
+                    tooltip.innerHTML = html;
+                    tooltip.style.display = 'block';
+                } else if (oreMap[tile.y] && oreMap[tile.y][tile.x]) {
+                    const ore = oreMap[tile.y][tile.x];
+                    const oreColor = getOreColorCSS(ore);
+                    let html = `<div class="tooltip-title" style="color:${oreColor}">${ore.charAt(0).toUpperCase() + ore.slice(1)} Ore</div>`;
+                    html += `<div class="tooltip-stat">Place a drill here to mine</div>`;
+                    html += `<div class="tooltip-stat" style="margin-top:8px;color:#666;font-size:10px">Position: (${tile.x}, ${tile.y})</div>`;
+                    tooltip.innerHTML = html;
+                    tooltip.style.display = 'block';
+                } else if (selectedBuilding && BUILDINGS[selectedBuilding]) {
+                    // Show selected building info when hovering empty tile
+                    const data = BUILDINGS[selectedBuilding];
+                    let html = `<div class="tooltip-title">${data.name}</div>`;
+                    html += `<div class="tooltip-stat">${data.desc}</div>`;
+                    // Show cost
+                    if (data.cost && Object.keys(data.cost).length > 0) {
+                        let costHtml = '<div class="tooltip-stat"><span class="tooltip-stat-label">Cost:</span> ';
+                        costHtml += Object.entries(data.cost).map(([res, amt]) => {
+                            const hasEnough = (resources[res] || 0) >= amt;
+                            return `<span style="color:${hasEnough ? getOreColorCSS(res) : '#ff4444'}">${amt} ${res}</span>`;
+                        }).join(', ');
+                        html += costHtml + '</div>';
+                    }
+                    html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Health:</span> ${data.health}</div>`;
+                    if (data.damage) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Damage:</span> ${data.damage}</div>`;
+                    if (data.range) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Range:</span> ${data.range} tiles</div>`;
+                    if (data.ammoType) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Ammo type:</span> <span style="color:${getOreColorCSS(data.ammoType)}">${data.ammoType}</span></div>`;
+                    if (data.powerUse) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power use:</span> ${data.powerUse}</div>`;
+                    if (data.powerOutput) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power output:</span> ${data.powerOutput}</div>`;
+                    if (data.mineSpeed) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Mine speed:</span> ${data.mineSpeed}x</div>`;
+                    if (data.explosionDamage) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Explosion:</span> ${data.explosionDamage} dmg, ${data.explosionRange} range</div>`;
+                    html += `<div class="tooltip-stat" style="margin-top:8px;color:#666;font-size:10px">Position: (${tile.x}, ${tile.y})</div>`;
+                    tooltip.innerHTML = html;
+                    tooltip.style.display = 'block';
+                } else {
+                    // Show terrain info
+                    const terrain = terrainMap[tile.y][tile.x];
+                    const terrainNames = { 0: 'Grass', 1: 'Sand', 2: 'Water', 3: 'Stone', 4: 'Dark Stone' };
+                    let html = `<div class="tooltip-title" style="color:#888">${terrainNames[terrain] || 'Unknown'}</div>`;
+                    if (terrain === 2) {
+                        html += `<div class="tooltip-stat" style="color:#ff6666">Cannot build here</div>`;
+                    } else {
+                        html += `<div class="tooltip-stat">Empty tile</div>`;
+                    }
+                    html += `<div class="tooltip-stat" style="margin-top:8px;color:#666;font-size:10px">Position: (${tile.x}, ${tile.y})</div>`;
+                    tooltip.innerHTML = html;
+                    tooltip.style.display = 'block';
+                }
+            } else {
+                tooltip.style.display = 'none';
+            }
+        }
+
+        function getOreColorCSS(type) {
+            const colors = { copper: '#d4a574', lead: '#7799aa', coal: '#666666', titanium: '#4a7c9b', alloy: '#b8967a' };
+            return colors[type] || '#ffffff';
+        }
+
+        function getOreColor(type) {
+            const colors = { copper: 0xd4a574, lead: 0x7799aa, coal: 0x444444, titanium: 0x4a7c9b, alloy: 0xb8967a };
+            return colors[type] || 0xffffff;
+        }
+
+        function tryPlaceBuilding(x, y) {
+            if (!selectedBuilding) return;
+            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return;
+
+            if (selectedBuilding === 'delete') {
+                deleteBuilding(x, y);
+                return;
+            }
+
+            if (map[y][x] !== 0) return;
+            if (terrainMap[y][x] === TERRAIN.WATER) return;
+            if (!canAfford(selectedBuilding)) return;
+
+            const isDrill = selectedBuilding === 'drill' || selectedBuilding === 'pneumatic-drill';
+            if (isDrill && !oreMap[y][x]) return;
+
+            spend(selectedBuilding);
+
+            const data = BUILDINGS[selectedBuilding];
+            const building = {
+                type: selectedBuilding,
+                x: x, y: y,
+                rotation: rotation,
+                health: data.health,
+                maxHealth: data.health,
+                cooldown: 0,
+                stored: 0,
+                powered: false,
+                ammo: 0
+            };
+
+            if (isDrill) {
+                building.ore = oreMap[y][x];
+            }
+
+            if (selectedBuilding === 'generator') {
+                building.coalStored = 0;
+                building.active = false;
+            }
+
+            // Alloy factory stores copper and lead
+            if (selectedBuilding === 'alloy-factory') {
+                building.copperStored = 0;
+                building.leadStored = 0;
+                building.craftProgress = 0;
+                building.powered = false;
+            }
+
+            // Turrets start with NO ammo - must be fed via conveyors
+            if (selectedBuilding === 'turret' || selectedBuilding === 'scatter' || selectedBuilding === 'alloy-turret') {
+                building.ammo = 0;
+                building.maxAmmo = 20;
+            }
+
+            // Routers track last output direction for even distribution
+            if (selectedBuilding === 'router') {
+                building.lastOutput = 0;
+            }
+
+            buildings.push(building);
+            map[y][x] = selectedBuilding;
+            spawnParticles(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 0x44ff44, 5);
+        }
+
+        function deleteBuilding(x, y) {
+            const idx = buildings.findIndex(b => b.x === x && b.y === y && b.type !== 'core');
+            if (idx !== -1) {
+                const b = buildings[idx];
+                const data = BUILDINGS[b.type];
+                if (data && data.cost) {
+                    for (let res in data.cost) {
+                        resources[res] += Math.floor(data.cost[res] * 0.5);
+                    }
+                    updateResourceUI();
+                }
+                buildings.splice(idx, 1);
+                map[y][x] = 0;
+                spawnParticles(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 0xff4444, 5);
+            }
+        }
+
+        function produceTick() {
+            buildings.forEach(b => {
+                if ((b.type === 'drill' || b.type === 'pneumatic-drill') && b.ore) {
+                    const data = BUILDINGS[b.type];
+                    b.stored = (b.stored || 0) + data.mineSpeed;
+                    if (b.stored >= 2) {
+                        outputItem(b, b.ore);
+                        b.stored = 0;
+                    }
+                }
+            });
+        }
+
+        // Ammo tick removed - turrets now get ammo from conveyor items only
+
+        function powerTick() {
+            let totalProduction = 0;
+            let totalConsumption = 0;
+
+            buildings.forEach(b => {
+                if (b.type === 'generator') {
+                    const data = BUILDINGS.generator;
+                    if (b.coalStored > data.coalConsume) {
+                        b.coalStored -= data.coalConsume;
+                        b.active = true;
+                        totalProduction += data.powerOutput;
+                    } else {
+                        b.active = false;
+                    }
+                }
+            });
+
+            // Count power consumers
+            buildings.forEach(b => {
+                if (b.type === 'laser') {
+                    totalConsumption += BUILDINGS.laser.powerUse;
+                }
+                if (b.type === 'alloy-factory') {
+                    totalConsumption += BUILDINGS['alloy-factory'].powerUse;
+                }
+            });
+
+            const availablePower = totalProduction;
+            let powerUsed = 0;
+
+            // Power all consumers that are connected
+            buildings.filter(b => b.type === 'laser' || b.type === 'alloy-factory').forEach(consumer => {
+                const cx = consumer.x * TILE_SIZE + TILE_SIZE/2;
+                const cy = consumer.y * TILE_SIZE + TILE_SIZE/2;
+                const powerUse = BUILDINGS[consumer.type].powerUse;
+
+                const connected = buildings.some(node => {
+                    if (node.type !== 'power-node' && node.type !== 'generator') return false;
+                    const nx = node.x * TILE_SIZE + TILE_SIZE/2;
+                    const ny = node.y * TILE_SIZE + TILE_SIZE/2;
+                    const dist = Math.sqrt((cx - nx)**2 + (cy - ny)**2);
+                    return dist <= BUILDINGS['power-node'].powerRange * TILE_SIZE;
+                });
+
+                if (connected && availablePower - powerUsed >= powerUse) {
+                    consumer.powered = true;
+                    powerUsed += powerUse;
+                } else {
+                    consumer.powered = false;
+                }
+            });
+
+            // Alloy factory crafting (only when powered and has materials)
+            buildings.filter(b => b.type === 'alloy-factory').forEach(factory => {
+                if (factory.powered && factory.copperStored >= 1 && factory.leadStored >= 1) {
+                    factory.craftProgress += 500; // Progress per tick (500ms)
+                    if (factory.craftProgress >= BUILDINGS['alloy-factory'].craftTime) {
+                        factory.craftProgress = 0;
+                        factory.copperStored--;
+                        factory.leadStored--;
+                        // Output alloy
+                        outputItem(factory, 'alloy');
+                    }
+                }
+            });
+
+            powerGrid.production = totalProduction;
+            powerGrid.consumption = powerUsed;
+        }
+
+        function outputItem(building, itemType) {
+            const dir = getDirection(building.rotation);
+            const outX = building.x + dir.x;
+            const outY = building.y + dir.y;
+
+            if (outX < 0 || outX >= MAP_WIDTH || outY < 0 || outY >= MAP_HEIGHT) return;
+
+            const target = buildings.find(t =>
+                t.x === outX && t.y === outY ||
+                (t.type === 'core' && outX >= t.x && outX < t.x + 2 && outY >= t.y && outY < t.y + 2)
+            );
+
+            if (target) {
+                if (target.type === 'core') {
+                    resources[itemType] = (resources[itemType] || 0) + 1;
+                    updateResourceUI();
+                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                } else if (target.type === 'generator' && itemType === 'coal') {
+                    target.coalStored = (target.coalStored || 0) + 1;
+                } else if (target.type === 'alloy-factory') {
+                    // Alloy factory accepts copper and lead
+                    if (itemType === 'copper' && target.copperStored < 10) {
+                        target.copperStored++;
+                        spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    } else if (itemType === 'lead' && target.leadStored < 10) {
+                        target.leadStored++;
+                        spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    }
+                } else if (target.type === 'conveyor' || target.type === 'alloy-conveyor' || target.type === 'router' || target.type === 'junction') {
+                    // Items now use world coordinates for smooth movement
+                    const startWorldX = building.x * TILE_SIZE + TILE_SIZE / 2;
+                    const startWorldY = building.y * TILE_SIZE + TILE_SIZE / 2;
+                    items.push({
+                        type: itemType,
+                        worldX: startWorldX,
+                        worldY: startWorldY,
+                        targetTileX: outX,
+                        targetTileY: outY,
+                        fromDir: (building.rotation + 2) % 4
+                    });
+                } else if ((target.type === 'turret' || target.type === 'scatter') &&
+                           BUILDINGS[target.type].ammoType === itemType &&
+                           target.ammo < (target.maxAmmo || 20)) {
+                    // Feed ammo to turret
+                    target.ammo++;
+                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                }
+            }
+        }
+
+        // Smooth item movement speed (pixels per frame)
+        const ITEM_SPEED = 1.5;
+
+        // Helper function to handle item reaching a target
+        function handleItemTarget(item, target, nextX, nextY, dir, targetWorldX, targetWorldY, toRemove, idx) {
+            if (target.type === 'core') {
+                resources[item.type] = (resources[item.type] || 0) + 1;
+                updateResourceUI();
+                spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                toRemove.push(idx);
+                return true;
+            } else if (target.type === 'generator' && item.type === 'coal') {
+                target.coalStored = (target.coalStored || 0) + 1;
+                spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                toRemove.push(idx);
+                return true;
+            } else if (target.type === 'alloy-factory') {
+                // Alloy factory accepts copper and lead
+                if (item.type === 'copper' && target.copperStored < 10) {
+                    target.copperStored++;
+                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                    toRemove.push(idx);
+                    return true;
+                } else if (item.type === 'lead' && target.leadStored < 10) {
+                    target.leadStored++;
+                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                    toRemove.push(idx);
+                    return true;
+                }
+            } else if ((target.type === 'turret' || target.type === 'scatter' || target.type === 'alloy-turret') &&
+                       BUILDINGS[target.type].ammoType === item.type &&
+                       target.ammo < (target.maxAmmo || 20)) {
+                // Feed ammo to turret
+                target.ammo++;
+                spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                toRemove.push(idx);
+                return true;
+            } else if (target.type === 'conveyor' || target.type === 'alloy-conveyor' || target.type === 'router' || target.type === 'junction') {
+                // Check if next tile is blocked
+                const occupied = items.some(i => i !== item &&
+                    i.targetTileX === nextX && i.targetTileY === nextY &&
+                    Math.sqrt((i.worldX - targetWorldX)**2 + (i.worldY - targetWorldY)**2) < TILE_SIZE * 0.6
+                );
+                if (!occupied) {
+                    item.targetTileX = nextX;
+                    item.targetTileY = nextY;
+                    item.fromDir = (dir + 2) % 4;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function updateItems() {
+            const toRemove = [];
+
+            items.forEach((item, idx) => {
+                // Calculate target world position (center of target tile)
+                const targetWorldX = item.targetTileX * TILE_SIZE + TILE_SIZE / 2;
+                const targetWorldY = item.targetTileY * TILE_SIZE + TILE_SIZE / 2;
+
+                // Move towards target
+                const dx = targetWorldX - item.worldX;
+                const dy = targetWorldY - item.worldY;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+
+                if (dist > ITEM_SPEED) {
+                    // Still moving to target
+                    item.worldX += (dx / dist) * ITEM_SPEED;
+                    item.worldY += (dy / dist) * ITEM_SPEED;
+                } else {
+                    // Reached target tile center - find next destination
+                    item.worldX = targetWorldX;
+                    item.worldY = targetWorldY;
+
+                    const building = buildings.find(b => b.x === item.targetTileX && b.y === item.targetTileY);
+                    if (!building) {
+                        toRemove.push(idx);
+                        return;
+                    }
+
+                    // Determine output directions and find valid targets
+                    let moved = false;
+
+                    if (building.type === 'conveyor') {
+                        // Conveyor: single output direction
+                        const dir = building.rotation;
+                        const d = getDirection(dir);
+                        const nextX = item.targetTileX + d.x;
+                        const nextY = item.targetTileY + d.y;
+
+                        if (nextX >= 0 && nextX < MAP_WIDTH && nextY >= 0 && nextY < MAP_HEIGHT) {
+                            const target = buildings.find(b =>
+                                b.x === nextX && b.y === nextY ||
+                                (b.type === 'core' && nextX >= b.x && nextX < b.x + 2 && nextY >= b.y && nextY < b.y + 2)
+                            );
+
+                            if (target) {
+                                moved = handleItemTarget(item, target, nextX, nextY, dir, targetWorldX, targetWorldY, toRemove, idx);
+                            }
+                        }
+                    } else if (building.type === 'router') {
+                        // Router: distribute evenly to all valid outputs
+                        // First, find all valid output targets (excluding input direction)
+                        let validOutputs = [];
+
+                        for (let dirIdx = 0; dirIdx < 4; dirIdx++) {
+                            if (dirIdx === item.fromDir) continue; // Skip input direction
+
+                            const d = getDirection(dirIdx);
+                            const nextX = item.targetTileX + d.x;
+                            const nextY = item.targetTileY + d.y;
+
+                            if (nextX < 0 || nextX >= MAP_WIDTH || nextY < 0 || nextY >= MAP_HEIGHT) continue;
+
+                            const target = buildings.find(b =>
+                                b.x === nextX && b.y === nextY ||
+                                (b.type === 'core' && nextX >= b.x && nextX < b.x + 2 && nextY >= b.y && nextY < b.y + 2)
+                            );
+
+                            if (target) {
+                                // Check if this is a valid output
+                                const isValidTarget =
+                                    target.type === 'core' ||
+                                    (target.type === 'generator' && item.type === 'coal') ||
+                                    ((target.type === 'turret' || target.type === 'scatter') &&
+                                     BUILDINGS[target.type].ammoType === item.type &&
+                                     target.ammo < (target.maxAmmo || 20)) ||
+                                    target.type === 'conveyor' ||
+                                    target.type === 'router' ||
+                                    target.type === 'junction';
+
+                                if (isValidTarget) {
+                                    // For conveyors/routers/junctions, check if not blocked
+                                    if (target.type === 'conveyor' || target.type === 'router' || target.type === 'junction') {
+                                        const occupied = items.some(i => i !== item &&
+                                            i.targetTileX === nextX && i.targetTileY === nextY &&
+                                            Math.sqrt((i.worldX - targetWorldX)**2 + (i.worldY - targetWorldY)**2) < TILE_SIZE * 0.6
+                                        );
+                                        if (!occupied) {
+                                            validOutputs.push({ dir: dirIdx, target, nextX, nextY });
+                                        }
+                                    } else {
+                                        // All outputs have equal priority - distribute evenly
+                                        validOutputs.push({ dir: dirIdx, target, nextX, nextY });
+                                    }
+                                }
+                            }
+                        }
+
+                        if (validOutputs.length > 0) {
+                            // All outputs have equal priority - use round-robin distribution
+                            const lastOutput = building.lastOutput || 0;
+                            let chosenIdx = 0;
+
+                            // Find the next output in rotation order (by direction)
+                            for (let i = 0; i < validOutputs.length; i++) {
+                                if (validOutputs[i].dir > lastOutput) {
+                                    chosenIdx = i;
+                                    break;
+                                }
+                            }
+                            // If none found after lastOutput, wrap to first
+                            if (validOutputs[chosenIdx].dir <= lastOutput && validOutputs.length > 1) {
+                                chosenIdx = 0;
+                            }
+
+                            const chosen = validOutputs[chosenIdx];
+                            building.lastOutput = chosen.dir;
+
+                            moved = handleItemTarget(item, chosen.target, chosen.nextX, chosen.nextY, chosen.dir, targetWorldX, targetWorldY, toRemove, idx);
+                        }
+                    } else if (building.type === 'junction') {
+                        // Junction: pass through in same direction
+                        const dir = (item.fromDir + 2) % 4;
+                        const d = getDirection(dir);
+                        const nextX = item.targetTileX + d.x;
+                        const nextY = item.targetTileY + d.y;
+
+                        if (nextX >= 0 && nextX < MAP_WIDTH && nextY >= 0 && nextY < MAP_HEIGHT) {
+                            const target = buildings.find(b =>
+                                b.x === nextX && b.y === nextY ||
+                                (b.type === 'core' && nextX >= b.x && nextX < b.x + 2 && nextY >= b.y && nextY < b.y + 2)
+                            );
+
+                            if (target) {
+                                moved = handleItemTarget(item, target, nextX, nextY, dir, targetWorldX, targetWorldY, toRemove, idx);
+                            }
+                        }
+                    }
+
+                    // If stuck, stay in place (item will wait)
+                }
+            });
+
+            // Remove consumed items
+            for (let i = toRemove.length - 1; i >= 0; i--) {
+                items.splice(toRemove[i], 1);
+            }
+        }
+
+        function repairTick() {
+            buildings.forEach(b => {
+                if (b.type === 'repair') {
+                    const range = BUILDINGS.repair.repairRange * TILE_SIZE;
+                    const rx = b.x * TILE_SIZE + TILE_SIZE/2;
+                    const ry = b.y * TILE_SIZE + TILE_SIZE/2;
+
+                    buildings.forEach(target => {
+                        if (target === b || target.type === 'core') return;
+                        if (target.health >= target.maxHealth) return;
+
+                        const tx = target.x * TILE_SIZE + TILE_SIZE/2;
+                        const ty = target.y * TILE_SIZE + TILE_SIZE/2;
+                        const dist = Math.sqrt((tx - rx)**2 + (ty - ry)**2);
+
+                        if (dist <= range) {
+                            target.health = Math.min(target.maxHealth, target.health + 2);
+                        }
+                    });
+                }
+            });
+        }
+
+        function getDirection(rot) {
+            const dirs = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }];
+            return dirs[rot % 4];
+        }
+
+        function updateWaveTimer() {
+            if (gameOver) return;
+            waveTimer--;
+            document.getElementById('next-wave').textContent = waveTimer + 's';
+            if (waveTimer <= 0) {
+                spawnWave();
+            }
+        }
+
+        function startWaveEarly() {
+            if (waveTimer > 5) {
+                resources.copper += Math.floor(waveTimer / 2);
+                updateResourceUI();
+                spawnWave();
+            }
+        }
+
+        function spawnWave() {
+            wave++;
+            document.getElementById('wave-num').textContent = wave;
+            waveTimer = 60 + wave * 5;
+
+            const baseCount = 4 + wave * 2;
+
+            for (let i = 0; i < baseCount; i++) {
+                // Spawn from designated spawn point
+                const spawnX = spawnPoint.x * TILE_SIZE + (Math.random() - 0.5) * TILE_SIZE * 4;
+                const spawnY = spawnPoint.y * TILE_SIZE + (Math.random() - 0.5) * TILE_SIZE * 4;
+
+                let enemyType = 'basic';
+                const roll = Math.random();
+                if (wave >= 2 && roll < 0.25) enemyType = 'fast';
+                if (wave >= 3 && roll < 0.2) enemyType = 'shooter';
+                if (wave >= 4 && roll < 0.15) enemyType = 'sniper';
+                if (wave >= 5 && roll < 0.12) enemyType = 'artillery';
+                if (wave >= 5 && roll < 0.18) enemyType = 'tank';
+                if (wave >= 6 && roll < 0.1) enemyType = 'swarm';
+                if (wave >= 8 && roll < 0.08) enemyType = 'boss';
+
+                const stats = {
+                    basic: { health: 40 + wave * 5, speed: 0.9, size: 12, color: 0xff5555, damage: 1, canShoot: false },
+                    fast: { health: 20 + wave * 3, speed: 1.8, size: 10, color: 0xffaa00, damage: 0.5, canShoot: false },
+                    shooter: { health: 30 + wave * 4, speed: 0.7, size: 11, color: 0xff8844, damage: 0.5, canShoot: true, range: 6, fireCooldown: 1800, bulletSpeed: 4 },
+                    sniper: { health: 25 + wave * 3, speed: 0.5, size: 10, color: 0x8844ff, damage: 2, canShoot: true, range: 10, fireCooldown: 3000, bulletSpeed: 8 },
+                    artillery: { health: 60 + wave * 6, speed: 0.3, size: 16, color: 0x448844, damage: 4, canShoot: true, range: 12, fireCooldown: 4000, bulletSpeed: 3, splash: true },
+                    tank: { health: 100 + wave * 12, speed: 0.35, size: 18, color: 0x884444, damage: 3, canShoot: true, range: 4, fireCooldown: 2500, bulletSpeed: 5 },
+                    swarm: { health: 15 + wave * 2, speed: 2.2, size: 8, color: 0xff88ff, damage: 0.3, canShoot: false },
+                    boss: { health: 300 + wave * 25, speed: 0.25, size: 26, color: 0xff0000, damage: 8, canShoot: true, range: 8, fireCooldown: 1200, bulletSpeed: 6 }
+                }[enemyType];
+
+                enemies.push({
+                    x: spawnX,
+                    y: spawnY,
+                    ...stats,
+                    maxHealth: stats.health,
+                    type: enemyType,
+                    delay: i * 300,
+                    fireCooldownMax: stats.fireCooldown || 0,
+                    lastFire: 0,
+                    bulletSpeed: stats.bulletSpeed || 4,
+                    splash: stats.splash || false,
+                    targetBuilding: null
+                });
+            }
+        }
+
+        function updateResourceUI() {
+            document.getElementById('copper-count').textContent = resources.copper || 0;
+            document.getElementById('lead-count').textContent = resources.lead || 0;
+            document.getElementById('coal-count').textContent = resources.coal || 0;
+            document.getElementById('titanium-count').textContent = resources.titanium || 0;
+            document.getElementById('alloy-count').textContent = resources.alloy || 0;
+            renderBuildingGrid();
+        }
+
+        function updatePlayerHealthUI() {
+            const pct = Math.max(0, (player.health / player.maxHealth) * 100);
+            document.getElementById('player-health-fill').style.width = pct + '%';
+            if (player.respawnTimer > 0) {
+                document.getElementById('player-health-text').textContent = 'Respawn: ' + Math.ceil(player.respawnTimer / 1000) + 's';
+            } else {
+                document.getElementById('player-health-text').textContent = 'Ship: ' + Math.ceil(pct) + '%';
+            }
+        }
+
+        function respawnPlayer() {
+            player.deaths++;
+            player.respawnTimer = 3000; // 3 second respawn
+            player.health = 0;
+
+            // Big explosion effect
+            spawnParticles(player.x, player.y, 0xff4400, 20);
+            spawnParticles(player.x, player.y, 0xffff00, 15);
+            spawnParticles(player.x, player.y, 0xff0000, 10);
+
+            updatePlayerHealthUI();
+        }
+
+        function completeRespawn() {
+            // Respawn at core
+            const core = buildings.find(b => b.type === 'core');
+            if (core) {
+                player.x = (core.x + 1) * TILE_SIZE;
+                player.y = (core.y + 1) * TILE_SIZE;
+            }
+
+            player.health = player.maxHealth;
+            player.respawnTimer = 0;
+            player.invulnerable = 2000; // 2 seconds of invulnerability
+
+            // Respawn particles
+            spawnParticles(player.x, player.y, 0x44ff44, 15);
+            spawnParticles(player.x, player.y, 0xffffff, 10);
+
+            updatePlayerHealthUI();
+        }
+
+        function spawnParticles(x, y, color, count) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x, y: y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    life: 30,
+                    color: color,
+                    size: 2 + Math.random() * 2
+                });
+            }
+        }
+
+        function update(time, delta) {
+            if (gameOver) {
+                graphics.clear();
+                graphics.fillStyle(0xff0000, 0.5);
+                graphics.fillRect(0, 0, window.innerWidth, window.innerHeight);
+                return;
+            }
+
+            // Handle respawn timer
+            if (player.respawnTimer > 0) {
+                player.respawnTimer -= delta;
+                if (player.respawnTimer <= 0) {
+                    completeRespawn();
+                }
+                updatePlayerHealthUI();
+            }
+
+            // Handle invulnerability timer
+            if (player.invulnerable > 0) {
+                player.invulnerable -= delta;
+            }
+
+            // Player movement (only if alive)
+            if (player.respawnTimer <= 0) {
+                if (keys.W.isDown) player.y -= player.speed;
+                if (keys.S.isDown) player.y += player.speed;
+                if (keys.A.isDown) player.x -= player.speed;
+                if (keys.D.isDown) player.x += player.speed;
+
+                // Clamp player to map bounds
+                player.x = Math.max(TILE_SIZE, Math.min(MAP_WIDTH * TILE_SIZE - TILE_SIZE, player.x));
+                player.y = Math.max(TILE_SIZE, Math.min(MAP_HEIGHT * TILE_SIZE - TILE_SIZE, player.y));
+            }
+
+            // Camera follows player
+            camera.x = player.x - window.innerWidth / 2;
+            camera.y = player.y - window.innerHeight / 2;
+
+            // Clamp camera
+            camera.x = Math.max(0, Math.min(MAP_WIDTH * TILE_SIZE - window.innerWidth, camera.x));
+            camera.y = Math.max(0, Math.min(MAP_HEIGHT * TILE_SIZE - window.innerHeight, camera.y));
+
+            graphics.clear();
+
+            // Calculate visible tile range
+            const startTileX = Math.max(0, Math.floor(camera.x / TILE_SIZE) - 1);
+            const startTileY = Math.max(0, Math.floor(camera.y / TILE_SIZE) - 1);
+            const endTileX = Math.min(MAP_WIDTH, Math.ceil((camera.x + window.innerWidth) / TILE_SIZE) + 1);
+            const endTileY = Math.min(MAP_HEIGHT, Math.ceil((camera.y + window.innerHeight) / TILE_SIZE) + 1);
+
+            // Draw terrain
+            for (let y = startTileY; y < endTileY; y++) {
+                for (let x = startTileX; x < endTileX; x++) {
+                    const screenX = x * TILE_SIZE - camera.x;
+                    const screenY = y * TILE_SIZE - camera.y;
+
+                    const terrain = terrainMap[y][x];
+                    let color;
+                    switch (terrain) {
+                        case TERRAIN.GRASS:
+                            color = ((x + y) % 2 === 0) ? 0x2d4a2d : 0x264026;
+                            break;
+                        case TERRAIN.SAND:
+                            color = ((x + y) % 2 === 0) ? 0x8b7355 : 0x7a6548;
+                            break;
+                        case TERRAIN.WATER:
+                            color = ((x + y) % 2 === 0) ? 0x2255aa : 0x1a4488;
+                            break;
+                        case TERRAIN.STONE:
+                            color = ((x + y) % 2 === 0) ? 0x555566 : 0x4a4a5a;
+                            break;
+                        case TERRAIN.DARK_STONE:
+                            color = ((x + y) % 2 === 0) ? 0x3a3a4a : 0x33333f;
+                            break;
+                    }
+
+                    graphics.fillStyle(color);
+                    graphics.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+                }
+            }
+
+            // Draw ore deposits
+            for (let y = startTileY; y < endTileY; y++) {
+                for (let x = startTileX; x < endTileX; x++) {
+                    if (oreMap[y][x]) {
+                        const screenX = x * TILE_SIZE - camera.x;
+                        const screenY = y * TILE_SIZE - camera.y;
+                        const color = getOreColor(oreMap[y][x]);
+
+                        graphics.fillStyle(color, 0.6);
+                        graphics.fillRoundedRect(screenX + 3, screenY + 3, TILE_SIZE - 6, TILE_SIZE - 6, 4);
+                        graphics.fillStyle(color, 0.3);
+                        graphics.fillRoundedRect(screenX + 6, screenY + 6, TILE_SIZE - 12, TILE_SIZE - 12, 2);
+                    }
+                }
+            }
+
+            // Draw spawn point indicator
+            const spawnScreenX = spawnPoint.x * TILE_SIZE - camera.x;
+            const spawnScreenY = spawnPoint.y * TILE_SIZE - camera.y;
+            const pulse = Math.sin(time / 300) * 0.3 + 0.5;
+            graphics.fillStyle(0xff0000, pulse * 0.3);
+            graphics.fillCircle(spawnScreenX + TILE_SIZE/2, spawnScreenY + TILE_SIZE/2, TILE_SIZE * 2);
+            graphics.lineStyle(2, 0xff0000, pulse);
+            graphics.strokeCircle(spawnScreenX + TILE_SIZE/2, spawnScreenY + TILE_SIZE/2, TILE_SIZE * 1.5);
+
+            // Draw buildings
+            buildings.forEach(b => {
+                const screenX = b.x * TILE_SIZE - camera.x;
+                const screenY = b.y * TILE_SIZE - camera.y;
+
+                // Only draw if on screen
+                if (screenX > -TILE_SIZE * 2 && screenX < window.innerWidth + TILE_SIZE &&
+                    screenY > -TILE_SIZE * 2 && screenY < window.innerHeight + TILE_SIZE) {
+                    drawBuilding(b, screenX, screenY);
+                }
+            });
+
+            // Update items smoothly every frame
+            updateItems();
+
+            // Draw items using world coordinates
+            items.forEach(item => {
+                const screenX = item.worldX - camera.x;
+                const screenY = item.worldY - camera.y;
+
+                // Only draw if on screen
+                if (screenX > -10 && screenX < window.innerWidth + 10 &&
+                    screenY > -10 && screenY < window.innerHeight + 10) {
+                    graphics.fillStyle(getOreColor(item.type));
+                    graphics.fillCircle(screenX, screenY, 5);
+                    // Add a small highlight for 3D effect
+                    graphics.fillStyle(0xffffff, 0.3);
+                    graphics.fillCircle(screenX - 1, screenY - 1, 2);
+                }
+            });
+
+            // Update and draw enemies
+            const core = buildings.find(b => b.type === 'core');
+            enemies.forEach((enemy, idx) => {
+                if (enemy.delay > 0) {
+                    enemy.delay -= delta;
+                    return;
+                }
+
+                // Find target - prioritize nearby buildings over core
+                let targetX, targetY;
+                let targetBuilding = null;
+                let minDist = Infinity;
+
+                // Check for nearby buildings to attack (excluding core initially)
+                buildings.forEach(b => {
+                    if (b.type === 'core') return;
+
+                    const bx = b.x * TILE_SIZE + TILE_SIZE/2;
+                    const by = b.y * TILE_SIZE + TILE_SIZE/2;
+                    const dist = Math.sqrt((enemy.x - bx)**2 + (enemy.y - by)**2);
+
+                    if (dist < TILE_SIZE * 4 && dist < minDist) {
+                        minDist = dist;
+                        targetBuilding = b;
+                        targetX = bx;
+                        targetY = by;
+                    }
+                });
+
+                // If no nearby building, target core
+                if (!targetBuilding && core) {
+                    targetX = (core.x + 1) * TILE_SIZE;
+                    targetY = (core.y + 1) * TILE_SIZE;
+                    targetBuilding = core;
+                }
+
+                enemy.targetBuilding = targetBuilding;
+
+                // Move towards target
+                const dx = targetX - enemy.x;
+                const dy = targetY - enemy.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                // Shooting enemies stop at range and shoot instead of ramming
+                const shootingRange = enemy.canShoot ? enemy.range * TILE_SIZE * 0.9 : TILE_SIZE;
+                const shouldMove = !enemy.canShoot || dist > shootingRange;
+
+                if (shouldMove && dist > TILE_SIZE) {
+                    enemy.x += (dx / dist) * enemy.speed;
+                    enemy.y += (dy / dist) * enemy.speed;
+                }
+
+                // Enemy shooting
+                if (enemy.canShoot && enemy.fireCooldownMax) {
+                    enemy.lastFire = (enemy.lastFire || 0) + delta;
+
+                    if (enemy.lastFire >= enemy.fireCooldownMax) {
+                        // Shoot at player if in range (only if player is alive)
+                        const playerDist = Math.sqrt((player.x - enemy.x)**2 + (player.y - enemy.y)**2);
+
+                        if (player.respawnTimer <= 0 && playerDist < enemy.range * TILE_SIZE) {
+                            enemyBullets.push({
+                                x: enemy.x,
+                                y: enemy.y,
+                                startX: enemy.x,
+                                startY: enemy.y,
+                                targetX: player.x,
+                                targetY: player.y,
+                                speed: enemy.bulletSpeed || 4,
+                                damage: enemy.damage * 5,
+                                splash: enemy.splash,
+                                enemyType: enemy.type
+                            });
+                            enemy.lastFire = 0;
+                        } else if (targetBuilding && dist < enemy.range * TILE_SIZE) {
+                            // Shoot at building from range
+                            enemyBullets.push({
+                                x: enemy.x,
+                                y: enemy.y,
+                                startX: enemy.x,
+                                startY: enemy.y,
+                                targetX: targetX,
+                                targetY: targetY,
+                                speed: enemy.bulletSpeed || 4,
+                                damage: enemy.damage * 3,
+                                targetBuilding: targetBuilding,
+                                splash: enemy.splash,
+                                enemyType: enemy.type
+                            });
+                            enemy.lastFire = 0;
+                        }
+                    }
+                }
+
+                // Only non-shooting enemies do melee damage
+                if (!enemy.canShoot && dist < TILE_SIZE && targetBuilding) {
+                    targetBuilding.health -= enemy.damage * 0.1;
+
+                    if (targetBuilding.type === 'core') {
+                        coreHealth = targetBuilding.health;
+                        if (coreHealth <= 0) {
+                            gameOver = true;
+                            alert('Game Over! Wave ' + wave);
+                        }
+                    } else if (targetBuilding.health <= 0) {
+                        const bidx = buildings.indexOf(targetBuilding);
+                        if (bidx !== -1) {
+                            // Check if explosive - trigger explosion
+                            if (targetBuilding.type === 'explosive') {
+                                const expData = BUILDINGS.explosive;
+                                const expRange = expData.explosionRange * TILE_SIZE;
+                                const expDamage = expData.explosionDamage;
+
+                                // Damage enemies in range
+                                enemies.forEach(e => {
+                                    const dx = e.x - targetX;
+                                    const dy = e.y - targetY;
+                                    const dist = Math.sqrt(dx*dx + dy*dy);
+                                    if (dist < expRange) {
+                                        const falloff = 1 - (dist / expRange);
+                                        e.health -= expDamage * falloff;
+                                        spawnParticles(e.x, e.y, 0xff6600, 5);
+                                    }
+                                });
+
+                                // Big explosion particles
+                                for (let i = 0; i < 30; i++) {
+                                    const angle = Math.random() * Math.PI * 2;
+                                    const speed = Math.random() * 5 + 2;
+                                    particles.push({
+                                        x: targetX,
+                                        y: targetY,
+                                        vx: Math.cos(angle) * speed,
+                                        vy: Math.sin(angle) * speed,
+                                        color: Math.random() > 0.5 ? 0xff6600 : 0xffcc00,
+                                        life: Math.random() * 30 + 20
+                                    });
+                                }
+                            }
+
+                            map[targetBuilding.y][targetBuilding.x] = 0;
+                            buildings.splice(bidx, 1);
+                            spawnParticles(targetX, targetY, 0x666666, 10);
+                        }
+                    }
+                }
+
+                // Draw enemy
+                const screenX = enemy.x - camera.x;
+                const screenY = enemy.y - camera.y;
+
+                if (screenX > -50 && screenX < window.innerWidth + 50 &&
+                    screenY > -50 && screenY < window.innerHeight + 50) {
+
+                    // Shadow
+                    graphics.fillStyle(0x000000, 0.3);
+                    graphics.fillEllipse(screenX, screenY + enemy.size * 0.8, enemy.size, enemy.size * 0.4);
+
+                    // Body
+                    graphics.fillStyle(enemy.color);
+                    graphics.fillCircle(screenX, screenY, enemy.size);
+
+                    // Details based on type
+                    const angle = Math.atan2(dy, dx);
+
+                    if (enemy.type === 'shooter') {
+                        // Gun barrel
+                        graphics.fillStyle(0x333333);
+                        graphics.fillRect(
+                            screenX + Math.cos(angle) * enemy.size * 0.5 - 2,
+                            screenY + Math.sin(angle) * enemy.size * 0.5 - 2,
+                            enemy.size * 0.7, 4
+                        );
+                    }
+
+                    if (enemy.type === 'sniper') {
+                        // Long sniper barrel
+                        graphics.fillStyle(0x222244);
+                        graphics.fillRect(
+                            screenX + Math.cos(angle) * enemy.size * 0.3 - 1,
+                            screenY + Math.sin(angle) * enemy.size * 0.3 - 1,
+                            enemy.size * 1.2, 3
+                        );
+                        // Scope
+                        graphics.fillStyle(0x6666ff);
+                        graphics.fillCircle(screenX, screenY - 3, 3);
+                    }
+
+                    if (enemy.type === 'artillery') {
+                        // Mortar tube
+                        graphics.fillStyle(0x224422);
+                        graphics.fillCircle(screenX, screenY, enemy.size * 0.5);
+                        graphics.fillStyle(0x335533);
+                        graphics.fillCircle(screenX, screenY, enemy.size * 0.35);
+                        // Barrel pointing up
+                        graphics.fillStyle(0x113311);
+                        graphics.fillRect(screenX - 3, screenY - enemy.size * 0.7, 6, enemy.size * 0.5);
+                    }
+
+                    if (enemy.type === 'tank') {
+                        // Tank treads
+                        graphics.fillStyle(0x443333);
+                        graphics.fillRect(screenX - enemy.size, screenY - enemy.size * 0.4, enemy.size * 2, enemy.size * 0.8);
+                        // Tank body
+                        graphics.fillStyle(0x664444);
+                        graphics.fillCircle(screenX, screenY, enemy.size * 0.6);
+                        // Turret
+                        graphics.fillStyle(0x553333);
+                        graphics.fillRect(
+                            screenX + Math.cos(angle) * 2 - 2,
+                            screenY + Math.sin(angle) * 2 - 2,
+                            enemy.size * 0.8, 4
+                        );
+                    }
+
+                    if (enemy.type === 'swarm') {
+                        // Small fast wings
+                        const wingFlap = Math.sin(time / 30) * 3;
+                        graphics.fillStyle(0xcc66cc);
+                        graphics.fillEllipse(screenX - 4, screenY + wingFlap, 3, 5);
+                        graphics.fillEllipse(screenX + 4, screenY - wingFlap, 3, 5);
+                    }
+
+                    if (enemy.type === 'boss') {
+                        // Boss armor
+                        graphics.fillStyle(0x880000);
+                        graphics.fillCircle(screenX, screenY, enemy.size * 0.7);
+                        // Crown/horns
+                        graphics.fillStyle(0xffcc00);
+                        graphics.beginPath();
+                        graphics.moveTo(screenX - 8, screenY - enemy.size);
+                        graphics.lineTo(screenX - 4, screenY - enemy.size - 8);
+                        graphics.lineTo(screenX, screenY - enemy.size);
+                        graphics.lineTo(screenX + 4, screenY - enemy.size - 8);
+                        graphics.lineTo(screenX + 8, screenY - enemy.size);
+                        graphics.closePath();
+                        graphics.fillPath();
+                        // Glowing aura
+                        graphics.lineStyle(2, 0xffff00, Math.sin(time / 100) * 0.3 + 0.7);
+                        graphics.strokeCircle(screenX, screenY, enemy.size + 4);
+                        // Gun turrets
+                        graphics.fillStyle(0x333333);
+                        graphics.fillRect(screenX - enemy.size * 0.8, screenY - 4, enemy.size * 0.6, 4);
+                        graphics.fillRect(screenX + enemy.size * 0.3, screenY - 4, enemy.size * 0.6, 4);
+                    }
+
+                    // Health bar
+                    if (enemy.health < enemy.maxHealth) {
+                        const healthPct = enemy.health / enemy.maxHealth;
+                        graphics.fillStyle(0x333333);
+                        graphics.fillRect(screenX - enemy.size, screenY - enemy.size - 8, enemy.size * 2, 4);
+                        graphics.fillStyle(healthPct > 0.5 ? 0x44ff44 : (healthPct > 0.25 ? 0xffff00 : 0xff4444));
+                        graphics.fillRect(screenX - enemy.size, screenY - enemy.size - 8, enemy.size * 2 * healthPct, 4);
+                    }
+                }
+            });
+
+            enemies = enemies.filter(e => e.health > 0);
+            document.getElementById('enemy-count').textContent = enemies.length;
+
+            // Enemy bullets
+            enemyBullets.forEach(bullet => {
+                const dx = bullet.targetX - bullet.x;
+                const dy = bullet.targetY - bullet.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                if (dist > bullet.speed) {
+                    bullet.x += (dx / dist) * bullet.speed;
+                    bullet.y += (dy / dist) * bullet.speed;
+                } else {
+                    bullet.hit = true;
+
+                    // Check if hit player (only if not respawning/invulnerable)
+                    if (player.respawnTimer <= 0 && player.invulnerable <= 0) {
+                        const playerDist = Math.sqrt((player.x - bullet.x)**2 + (player.y - bullet.y)**2);
+                        if (playerDist < 20) {
+                            player.health -= bullet.damage;
+                            updatePlayerHealthUI();
+                            spawnParticles(player.x, player.y, 0xff0000, 5);
+
+                            if (player.health <= 0) {
+                                respawnPlayer();
+                            }
+                        }
+                    }
+
+                    // Splash damage for artillery
+                    if (bullet.splash) {
+                        spawnParticles(bullet.x, bullet.y, 0x448844, 15);
+                        spawnParticles(bullet.x, bullet.y, 0xffaa00, 10);
+
+                        // Damage buildings in splash radius
+                        const splashRadius = TILE_SIZE * 2;
+                        buildings.forEach(b => {
+                            const bx = b.x * TILE_SIZE + TILE_SIZE / 2;
+                            const by = b.y * TILE_SIZE + TILE_SIZE / 2;
+                            const bDist = Math.sqrt((bx - bullet.x)**2 + (by - bullet.y)**2);
+                            if (bDist < splashRadius) {
+                                const falloff = 1 - (bDist / splashRadius);
+                                b.health -= bullet.damage * falloff;
+                                if (b.type === 'core') {
+                                    coreHealth = b.health;
+                                }
+                            }
+                        });
+                    }
+
+                    // Check if hit building (non-splash)
+                    if (bullet.targetBuilding && !bullet.splash) {
+                        bullet.targetBuilding.health -= bullet.damage;
+                        if (bullet.targetBuilding.type === 'core') {
+                            coreHealth = bullet.targetBuilding.health;
+                        }
+                    }
+                }
+
+                if (!bullet.hit) {
+                    const screenX = bullet.x - camera.x;
+                    const screenY = bullet.y - camera.y;
+
+                    // Different bullet visuals based on enemy type
+                    if (bullet.enemyType === 'sniper') {
+                        graphics.fillStyle(0x8844ff);
+                        graphics.fillCircle(screenX, screenY, 3);
+                        // Trail
+                        graphics.lineStyle(2, 0x8844ff, 0.5);
+                        const trailLen = 15;
+                        const dx = bullet.targetX - bullet.x;
+                        const dy = bullet.targetY - bullet.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist > 0) {
+                            graphics.lineBetween(screenX, screenY,
+                                screenX - (dx/dist) * trailLen,
+                                screenY - (dy/dist) * trailLen);
+                        }
+                    } else if (bullet.enemyType === 'artillery') {
+                        // Arc indicator
+                        const progress = 1 - (Math.sqrt((bullet.targetX - bullet.x)**2 + (bullet.targetY - bullet.y)**2) /
+                                             Math.sqrt((bullet.targetX - bullet.startX)**2 + (bullet.targetY - bullet.startY)**2 + 1));
+                        const arcHeight = Math.sin(progress * Math.PI) * 20;
+                        graphics.fillStyle(0x88ff88);
+                        graphics.fillCircle(screenX, screenY - arcHeight, 5);
+                        // Shadow
+                        graphics.fillStyle(0x000000, 0.3);
+                        graphics.fillCircle(screenX, screenY + 5, 3);
+                    } else {
+                        graphics.fillStyle(0xff8800);
+                        graphics.fillCircle(screenX, screenY, 4);
+                    }
+                }
+            });
+
+            enemyBullets = enemyBullets.filter(b => !b.hit);
+
+            // Turret AI
+            buildings.forEach(b => {
+                if (b.type === 'turret' || b.type === 'scatter' || b.type === 'laser' || b.type === 'alloy-turret') {
+                    if (b.type === 'laser' && !b.powered) return;
+                    if ((b.type === 'turret' || b.type === 'scatter' || b.type === 'alloy-turret') && b.ammo <= 0) return;
+
+                    const data = BUILDINGS[b.type];
+                    b.cooldown = (b.cooldown || 0) - delta;
+
+                    const tx = b.x * TILE_SIZE + TILE_SIZE/2;
+                    const ty = b.y * TILE_SIZE + TILE_SIZE/2;
+                    const range = data.range * TILE_SIZE;
+
+                    // Find closest enemy for targeting (always track, even when on cooldown)
+                    let closest = null;
+                    let closestDist = Infinity;
+
+                    enemies.forEach(e => {
+                        if (e.delay > 0) return;
+                        const dist = Math.sqrt((e.x - tx)**2 + (e.y - ty)**2);
+                        if (dist < closestDist && dist < range) {
+                            closest = e;
+                            closestDist = dist;
+                        }
+                    });
+
+                    // Update turret rotation to track target smoothly
+                    if (closest) {
+                        const targetAngle = Math.atan2(closest.y - ty, closest.x - tx);
+                        if (b.turretAngle === undefined) b.turretAngle = targetAngle;
+
+                        // Smooth rotation toward target
+                        let angleDiff = targetAngle - b.turretAngle;
+                        while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                        while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                        b.turretAngle += angleDiff * 0.15; // Rotation speed
+                    }
+
+                    if (b.cooldown <= 0 && enemies.length > 0 && closest) {
+                        if (b.type === 'turret') {
+                            bullets.push({
+                                x: tx, y: ty,
+                                targetX: closest.x, targetY: closest.y,
+                                speed: 10, damage: data.damage,
+                                type: 'bullet'
+                            });
+                            b.ammo--;
+                        } else if (b.type === 'alloy-turret') {
+                            // Salvo fires rapid bursts
+                            bullets.push({
+                                x: tx, y: ty,
+                                targetX: closest.x, targetY: closest.y,
+                                speed: 12, damage: data.damage,
+                                type: 'alloy'
+                            });
+                            b.ammo--;
+                        } else if (b.type === 'scatter') {
+                            for (let i = 0; i < data.shots; i++) {
+                                const spread = (i - 1) * 0.2;
+                                const angle = Math.atan2(closest.y - ty, closest.x - tx) + spread;
+                                bullets.push({
+                                    x: tx, y: ty,
+                                    vx: Math.cos(angle) * 8,
+                                    vy: Math.sin(angle) * 8,
+                                    speed: 8, damage: data.damage,
+                                    life: 30,
+                                    type: 'scatter'
+                                });
+                            }
+                            b.ammo -= 2;
+                        } else if (b.type === 'laser') {
+                            closest.health -= data.damage;
+                            spawnParticles(closest.x, closest.y, 0x6666ff, 8);
+
+                            const screenTx = tx - camera.x;
+                            const screenTy = ty - camera.y;
+                            const screenEx = closest.x - camera.x;
+                            const screenEy = closest.y - camera.y;
+
+                            graphics.lineStyle(3, 0x6666ff, 0.8);
+                            graphics.lineBetween(screenTx, screenTy, screenEx, screenEy);
+
+                            // Chain lightning
+                            enemies.forEach(e2 => {
+                                if (e2 !== closest && e2.delay <= 0) {
+                                    const chainDist = Math.sqrt((e2.x - closest.x)**2 + (e2.y - closest.y)**2);
+                                    if (chainDist < TILE_SIZE * 2) {
+                                        e2.health -= data.damage * 0.5;
+                                        const screen2x = e2.x - camera.x;
+                                        const screen2y = e2.y - camera.y;
+                                        graphics.lineStyle(2, 0x4444cc, 0.6);
+                                        graphics.lineBetween(screenEx, screenEy, screen2x, screen2y);
+                                    }
+                                }
+                            });
+                        }
+                        b.cooldown = data.cooldown;
+                    }
+                }
+            });
+
+            // Update bullets
+            bullets.forEach(bullet => {
+                if (bullet.type === 'scatter') {
+                    bullet.x += bullet.vx;
+                    bullet.y += bullet.vy;
+                    bullet.life--;
+
+                    if (bullet.life <= 0) {
+                        bullet.hit = true;
+                    } else {
+                        enemies.forEach(e => {
+                            if (e.delay <= 0) {
+                                const dist = Math.sqrt((e.x - bullet.x)**2 + (e.y - bullet.y)**2);
+                                if (dist < e.size + 4) {
+                                    e.health -= bullet.damage;
+                                    bullet.hit = true;
+                                    spawnParticles(bullet.x, bullet.y, 0xffaa00, 3);
+                                }
+                            }
+                        });
+                    }
+                } else {
+                    const dx = bullet.targetX - bullet.x;
+                    const dy = bullet.targetY - bullet.y;
+                    const dist = Math.sqrt(dx*dx + dy*dy);
+
+                    if (dist > bullet.speed) {
+                        bullet.x += (dx / dist) * bullet.speed;
+                        bullet.y += (dy / dist) * bullet.speed;
+                    } else {
+                        bullet.hit = true;
+                        enemies.forEach(e => {
+                            const eDist = Math.sqrt((e.x - bullet.x)**2 + (e.y - bullet.y)**2);
+                            if (eDist < 20) {
+                                e.health -= bullet.damage;
+                                spawnParticles(e.x, e.y, 0xffff00, 3);
+                            }
+                        });
+                    }
+                }
+
+                if (!bullet.hit) {
+                    const screenX = bullet.x - camera.x;
+                    const screenY = bullet.y - camera.y;
+                    const bulletColor = bullet.type === 'scatter' ? 0xffaa00 :
+                                       bullet.type === 'alloy' ? 0xb8967a : 0xffff00;
+                    graphics.fillStyle(bulletColor);
+                    graphics.fillCircle(screenX, screenY, bullet.type === 'scatter' ? 3 : 4);
+                }
+            });
+
+            bullets = bullets.filter(b => !b.hit);
+
+            // Update particles
+            particles.forEach(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1;
+                p.life--;
+
+                if (p.life > 0) {
+                    const screenX = p.x - camera.x;
+                    const screenY = p.y - camera.y;
+                    graphics.fillStyle(p.color, p.life / 30);
+                    graphics.fillCircle(screenX, screenY, p.size * (p.life / 30));
+                }
+            });
+            particles = particles.filter(p => p.life > 0);
+
+            // Draw player ship
+            drawPlayer();
+
+            // Building preview
+            if (selectedBuilding && selectedBuilding !== 'delete') {
+                const pointer = scene.input.activePointer;
+                const world = screenToWorld(pointer.x, pointer.y);
+                const tile = worldToTile(world.x, world.y);
+
+                if (tile.x >= 0 && tile.x < MAP_WIDTH && tile.y >= 0 && tile.y < MAP_HEIGHT) {
+                    const screenX = tile.x * TILE_SIZE - camera.x;
+                    const screenY = tile.y * TILE_SIZE - camera.y;
+
+                    const canPlace = map[tile.y][tile.x] === 0 &&
+                                    terrainMap[tile.y][tile.x] !== TERRAIN.WATER &&
+                                    canAfford(selectedBuilding);
+                    const isDrill = selectedBuilding === 'drill' || selectedBuilding === 'pneumatic-drill';
+                    const needsOre = isDrill && !oreMap[tile.y][tile.x];
+
+                    graphics.fillStyle(needsOre ? 0xff0000 : (canPlace ? 0x00ff00 : 0xff0000), 0.3);
+                    graphics.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+
+                    if (isDrill || selectedBuilding === 'conveyor') {
+                        drawArrow(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, rotation, 0xffffff);
+                    }
+
+                    // Show range
+                    const data = BUILDINGS[selectedBuilding];
+                    if (data.range) {
+                        graphics.lineStyle(1, 0x4444ff, 0.3);
+                        graphics.strokeCircle(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, data.range * TILE_SIZE);
+                    }
+                    if (data.powerRange) {
+                        graphics.lineStyle(1, 0xffcc00, 0.3);
+                        graphics.strokeCircle(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, data.powerRange * TILE_SIZE);
+                    }
+                }
+            }
+
+            // Update tooltip continuously based on mouse position
+            const pointer = scene.input.activePointer;
+            const world = screenToWorld(pointer.x, pointer.y);
+            const hoverTile = worldToTile(world.x, world.y);
+            updateTooltip(pointer, hoverTile);
+
+            // Draw minimap
+            drawMinimap();
+        }
+
+        function drawPlayer() {
+            // Don't draw if respawning
+            if (player.respawnTimer > 0) {
+                // Draw ghost/respawn indicator
+                const screenX = player.x - camera.x;
+                const screenY = player.y - camera.y;
+                const pulse = Math.sin(Date.now() / 100) * 0.3 + 0.3;
+                graphics.fillStyle(0x4488ff, pulse);
+                graphics.fillCircle(screenX, screenY, 15);
+                graphics.lineStyle(2, 0xffffff, pulse);
+                graphics.strokeCircle(screenX, screenY, 20 + Math.sin(Date.now() / 200) * 5);
+                return;
+            }
+
+            const screenX = player.x - camera.x;
+            const screenY = player.y - camera.y;
+
+            // Invulnerability shield
+            if (player.invulnerable > 0) {
+                const shieldPulse = Math.sin(Date.now() / 50) * 0.3 + 0.5;
+                graphics.fillStyle(0x44ffff, shieldPulse * 0.3);
+                graphics.fillCircle(screenX, screenY, 25);
+                graphics.lineStyle(2, 0x44ffff, shieldPulse);
+                graphics.strokeCircle(screenX, screenY, 25);
+            }
+
+            // Shadow
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillEllipse(screenX + 3, screenY + 15, 20, 10);
+
+            // Main hull - sleek fighter design
+            graphics.fillStyle(0x3366aa);
+            graphics.beginPath();
+            // Nose
+            graphics.moveTo(screenX, screenY - 22);
+            // Right side
+            graphics.lineTo(screenX + 8, screenY - 8);
+            graphics.lineTo(screenX + 14, screenY + 4);
+            graphics.lineTo(screenX + 16, screenY + 10);
+            // Right wing
+            graphics.lineTo(screenX + 20, screenY + 8);
+            graphics.lineTo(screenX + 18, screenY + 14);
+            graphics.lineTo(screenX + 8, screenY + 12);
+            // Back
+            graphics.lineTo(screenX + 6, screenY + 16);
+            graphics.lineTo(screenX - 6, screenY + 16);
+            // Left wing
+            graphics.lineTo(screenX - 8, screenY + 12);
+            graphics.lineTo(screenX - 18, screenY + 14);
+            graphics.lineTo(screenX - 20, screenY + 8);
+            // Left side
+            graphics.lineTo(screenX - 16, screenY + 10);
+            graphics.lineTo(screenX - 14, screenY + 4);
+            graphics.lineTo(screenX - 8, screenY - 8);
+            graphics.closePath();
+            graphics.fillPath();
+
+            // Hull highlight
+            graphics.fillStyle(0x5588cc);
+            graphics.beginPath();
+            graphics.moveTo(screenX, screenY - 18);
+            graphics.lineTo(screenX + 6, screenY - 6);
+            graphics.lineTo(screenX + 10, screenY + 4);
+            graphics.lineTo(screenX, screenY + 8);
+            graphics.lineTo(screenX - 10, screenY + 4);
+            graphics.lineTo(screenX - 6, screenY - 6);
+            graphics.closePath();
+            graphics.fillPath();
+
+            // Cockpit glass
+            const cockpitGlow = Math.sin(Date.now() / 100) * 0.1 + 0.9;
+            graphics.fillStyle(0x88ddff, cockpitGlow);
+            graphics.fillEllipse(screenX, screenY - 6, 4, 7);
+
+            // Cockpit frame
+            graphics.lineStyle(1, 0x224466);
+            graphics.strokeEllipse(screenX, screenY - 6, 4, 7);
+
+            // Wing stripes
+            graphics.fillStyle(0xff6600);
+            graphics.fillRect(screenX + 12, screenY + 6, 6, 2);
+            graphics.fillRect(screenX - 18, screenY + 6, 6, 2);
+
+            // Engine pods
+            graphics.fillStyle(0x333344);
+            graphics.fillRoundedRect(screenX - 5, screenY + 10, 4, 8, 1);
+            graphics.fillRoundedRect(screenX + 1, screenY + 10, 4, 8, 1);
+
+            // Engine glow
+            const engineGlow = Math.sin(Date.now() / 40) * 0.3 + 0.7;
+            const isMoving = keys.W?.isDown || keys.S?.isDown || keys.A?.isDown || keys.D?.isDown;
+            const glowIntensity = isMoving ? 1 : 0.5;
+
+            graphics.fillStyle(0xff4400, engineGlow * glowIntensity);
+            graphics.fillRect(screenX - 4, screenY + 16, 3, 4 + (isMoving ? 3 : 0));
+            graphics.fillRect(screenX + 1, screenY + 16, 3, 4 + (isMoving ? 3 : 0));
+
+            graphics.fillStyle(0xffaa00, engineGlow * glowIntensity * 0.8);
+            graphics.fillRect(screenX - 3, screenY + 17, 2, 3 + (isMoving ? 2 : 0));
+            graphics.fillRect(screenX + 1, screenY + 17, 2, 3 + (isMoving ? 2 : 0));
+
+            // Weapon hardpoints
+            graphics.fillStyle(0x444455);
+            graphics.fillCircle(screenX - 10, screenY, 3);
+            graphics.fillCircle(screenX + 10, screenY, 3);
+            graphics.fillStyle(0x666677);
+            graphics.fillCircle(screenX - 10, screenY, 2);
+            graphics.fillCircle(screenX + 10, screenY, 2);
+        }
+
+        function drawBuilding(b, screenX, screenY) {
+            const px = screenX;
+            const py = screenY;
+
+            if (b.type === 'core') {
+                // Large detailed core
+                graphics.fillStyle(0x1a3a1a);
+                graphics.fillRoundedRect(px + 2, py + 2, TILE_SIZE * 2 - 4, TILE_SIZE * 2 - 4, 8);
+
+                // Outer ring
+                graphics.fillStyle(0x2d5a2d);
+                graphics.fillRoundedRect(px + 6, py + 6, TILE_SIZE * 2 - 12, TILE_SIZE * 2 - 12, 6);
+
+                // Inner platform
+                graphics.fillStyle(0x4CAF50);
+                graphics.fillRoundedRect(px + 12, py + 12, TILE_SIZE * 2 - 24, TILE_SIZE * 2 - 24, 4);
+
+                // Core crystal
+                graphics.fillStyle(0x81C784);
+                graphics.fillCircle(px + TILE_SIZE, py + TILE_SIZE, 12);
+
+                // Glow effect
+                const glow = Math.sin(Date.now() / 200) * 0.2 + 0.4;
+                graphics.fillStyle(0xaaffaa, glow);
+                graphics.fillCircle(px + TILE_SIZE, py + TILE_SIZE, 16);
+
+                // Resource intake ports
+                graphics.fillStyle(0x333333);
+                graphics.fillRect(px + TILE_SIZE - 3, py + 2, 6, 4);
+                graphics.fillRect(px + TILE_SIZE - 3, py + TILE_SIZE * 2 - 6, 6, 4);
+                graphics.fillRect(px + 2, py + TILE_SIZE - 3, 4, 6);
+                graphics.fillRect(px + TILE_SIZE * 2 - 6, py + TILE_SIZE - 3, 4, 6);
+
+            } else if (b.type === 'drill') {
+                // Realistic drill
+                graphics.fillStyle(0x654321);
+                graphics.fillRoundedRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, 4);
+
+                // Metal frame
+                graphics.fillStyle(0x888888);
+                graphics.fillRect(px + 4, py + 4, TILE_SIZE - 8, 4);
+                graphics.fillRect(px + 4, py + TILE_SIZE - 8, TILE_SIZE - 8, 4);
+
+                // Rotating drill head
+                const drillAngle = (Date.now() / 100) % (Math.PI * 2);
+                graphics.fillStyle(0xaaaaaa);
+                graphics.save();
+                for (let i = 0; i < 3; i++) {
+                    const a = drillAngle + i * Math.PI * 2 / 3;
+                    graphics.fillRect(
+                        px + TILE_SIZE/2 + Math.cos(a) * 6 - 2,
+                        py + TILE_SIZE/2 + Math.sin(a) * 6 - 2,
+                        4, 4
+                    );
+                }
+                graphics.fillStyle(0x666666);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 4);
+
+                drawArrow(px + TILE_SIZE/2, py + TILE_SIZE/2, b.rotation, 0xffff00);
+
+            } else if (b.type === 'pneumatic-drill') {
+                // Advanced drill
+                graphics.fillStyle(0x8B5A2B);
+                graphics.fillRoundedRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, 4);
+
+                // Copper housing
+                graphics.fillStyle(0xB87333);
+                graphics.fillRoundedRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8, 3);
+
+                // Fast rotating dual drill
+                const pDrillAngle = (Date.now() / 50) % (Math.PI * 2);
+                graphics.fillStyle(0xcccccc);
+                for (let i = 0; i < 4; i++) {
+                    const a = pDrillAngle + i * Math.PI / 2;
+                    graphics.fillRect(
+                        px + TILE_SIZE/2 + Math.cos(a) * 7 - 2,
+                        py + TILE_SIZE/2 + Math.sin(a) * 7 - 2,
+                        4, 4
+                    );
+                }
+                graphics.fillStyle(0x888888);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 5);
+
+                drawArrow(px + TILE_SIZE/2, py + TILE_SIZE/2, b.rotation, 0xffcc00);
+
+            } else if (b.type === 'conveyor') {
+                // Conveyor belt base
+                graphics.fillStyle(0x333333);
+                graphics.fillRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+
+                const dir = getDirection(b.rotation);
+                const beltSpeed = 150; // ms per cycle
+                const beltPhase = (Date.now() / beltSpeed) % 1;
+
+                // Animated belt surface with chevron pattern
+                graphics.fillStyle(0x444444);
+                graphics.fillRect(px + 5, py + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+
+                // Moving chevron/arrow indicators
+                for (let i = 0; i < 4; i++) {
+                    const progress = ((i / 4 + beltPhase) % 1);
+                    let arrowX, arrowY;
+
+                    if (dir.x !== 0) {
+                        // Horizontal conveyor
+                        arrowX = px + 6 + progress * (TILE_SIZE - 12);
+                        arrowY = py + TILE_SIZE / 2;
+
+                        // Draw chevron pointing in direction
+                        graphics.fillStyle(0x666666);
+                        if (dir.x > 0) {
+                            graphics.beginPath();
+                            graphics.moveTo(arrowX - 3, arrowY - 4);
+                            graphics.lineTo(arrowX + 2, arrowY);
+                            graphics.lineTo(arrowX - 3, arrowY + 4);
+                            graphics.closePath();
+                            graphics.fillPath();
+                        } else {
+                            graphics.beginPath();
+                            graphics.moveTo(arrowX + 3, arrowY - 4);
+                            graphics.lineTo(arrowX - 2, arrowY);
+                            graphics.lineTo(arrowX + 3, arrowY + 4);
+                            graphics.closePath();
+                            graphics.fillPath();
+                        }
+                    } else {
+                        // Vertical conveyor
+                        arrowX = px + TILE_SIZE / 2;
+                        arrowY = py + 6 + progress * (TILE_SIZE - 12);
+
+                        graphics.fillStyle(0x666666);
+                        if (dir.y > 0) {
+                            graphics.beginPath();
+                            graphics.moveTo(arrowX - 4, arrowY - 3);
+                            graphics.lineTo(arrowX, arrowY + 2);
+                            graphics.lineTo(arrowX + 4, arrowY - 3);
+                            graphics.closePath();
+                            graphics.fillPath();
+                        } else {
+                            graphics.beginPath();
+                            graphics.moveTo(arrowX - 4, arrowY + 3);
+                            graphics.lineTo(arrowX, arrowY - 2);
+                            graphics.lineTo(arrowX + 4, arrowY + 3);
+                            graphics.closePath();
+                            graphics.fillPath();
+                        }
+                    }
+                }
+
+                // Metallic side rails
+                graphics.fillStyle(0x777777);
+                if (dir.x !== 0) {
+                    graphics.fillRect(px + 3, py + 3, TILE_SIZE - 6, 3);
+                    graphics.fillRect(px + 3, py + TILE_SIZE - 6, TILE_SIZE - 6, 3);
+                    // Rail highlights
+                    graphics.fillStyle(0x999999);
+                    graphics.fillRect(px + 3, py + 3, TILE_SIZE - 6, 1);
+                    graphics.fillRect(px + 3, py + TILE_SIZE - 6, TILE_SIZE - 6, 1);
+                } else {
+                    graphics.fillRect(px + 3, py + 3, 3, TILE_SIZE - 6);
+                    graphics.fillRect(px + TILE_SIZE - 6, py + 3, 3, TILE_SIZE - 6);
+                    // Rail highlights
+                    graphics.fillStyle(0x999999);
+                    graphics.fillRect(px + 3, py + 3, 1, TILE_SIZE - 6);
+                    graphics.fillRect(px + TILE_SIZE - 6, py + 3, 1, TILE_SIZE - 6);
+                }
+
+                // Roller wheels at edges
+                graphics.fillStyle(0x555555);
+                if (dir.x !== 0) {
+                    graphics.fillCircle(px + 6, py + TILE_SIZE / 2, 2);
+                    graphics.fillCircle(px + TILE_SIZE - 6, py + TILE_SIZE / 2, 2);
+                } else {
+                    graphics.fillCircle(px + TILE_SIZE / 2, py + 6, 2);
+                    graphics.fillCircle(px + TILE_SIZE / 2, py + TILE_SIZE - 6, 2);
+                }
+
+            } else if (b.type === 'router') {
+                graphics.fillStyle(0x555577);
+                graphics.fillRoundedRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8, 4);
+                graphics.fillStyle(0x666699);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 8);
+
+                // Distribution arrows
+                graphics.fillStyle(0x8888aa);
+                for (let i = 0; i < 4; i++) {
+                    const a = i * Math.PI / 2;
+                    graphics.fillRect(
+                        px + TILE_SIZE/2 + Math.cos(a) * 10 - 2,
+                        py + TILE_SIZE/2 + Math.sin(a) * 10 - 2,
+                        4, 4
+                    );
+                }
+
+            } else if (b.type === 'junction') {
+                graphics.fillStyle(0x775555);
+                graphics.fillRoundedRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8, 4);
+                graphics.lineStyle(2, 0x996666);
+                graphics.lineBetween(px + 4, py + TILE_SIZE/2, px + TILE_SIZE - 4, py + TILE_SIZE/2);
+                graphics.lineBetween(px + TILE_SIZE/2, py + 4, px + TILE_SIZE/2, py + TILE_SIZE - 4);
+
+            } else if (b.type === 'generator') {
+                // Coal generator with furnace
+                graphics.fillStyle(0x442200);
+                graphics.fillRoundedRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, 4);
+
+                // Furnace housing
+                graphics.fillStyle(0x663300);
+                graphics.fillRoundedRect(px + 5, py + 5, TILE_SIZE - 10, TILE_SIZE - 10, 3);
+
+                // Fire window
+                if (b.active) {
+                    const flicker = Math.sin(Date.now() / 80) * 0.3 + 0.7;
+                    graphics.fillStyle(0xff3300, flicker);
+                    graphics.fillRect(px + 10, py + 10, TILE_SIZE - 20, TILE_SIZE - 20);
+                    graphics.fillStyle(0xff6600, flicker * 0.8);
+                    graphics.fillRect(px + 12, py + 12, TILE_SIZE - 24, TILE_SIZE - 24);
+                    graphics.fillStyle(0xffaa00, flicker * 0.6);
+                    graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 4);
+                } else {
+                    graphics.fillStyle(0x333333);
+                    graphics.fillRect(px + 10, py + 10, TILE_SIZE - 20, TILE_SIZE - 20);
+                }
+
+                // Chimney
+                graphics.fillStyle(0x555555);
+                graphics.fillRect(px + TILE_SIZE - 10, py + 2, 6, 8);
+
+                // Coal level indicator
+                if (b.coalStored > 0) {
+                    const coalPct = Math.min(1, b.coalStored / 10);
+                    graphics.fillStyle(0x222222);
+                    graphics.fillRect(px + 2, py + TILE_SIZE - 6, (TILE_SIZE - 4) * coalPct, 4);
+                }
+
+            } else if (b.type === 'power-node') {
+                // Power distribution node
+                graphics.fillStyle(0x554400);
+                graphics.fillRoundedRect(px + 8, py + 8, TILE_SIZE - 16, TILE_SIZE - 16, 4);
+
+                // Electric coil
+                graphics.fillStyle(0x886600);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 8);
+
+                // Glowing core
+                const glow = Math.sin(Date.now() / 100) * 0.3 + 0.5;
+                graphics.fillStyle(0xffcc00, glow);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 5);
+                graphics.fillStyle(0xffff88, glow * 0.8);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 3);
+
+                // Connection points
+                graphics.fillStyle(0xccaa00);
+                graphics.fillCircle(px + TILE_SIZE/2, py + 4, 3);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE - 4, 3);
+                graphics.fillCircle(px + 4, py + TILE_SIZE/2, 3);
+                graphics.fillCircle(px + TILE_SIZE - 4, py + TILE_SIZE/2, 3);
+
+                // Draw power connections
+                const range = BUILDINGS['power-node'].powerRange * TILE_SIZE;
+                const nx = b.x * TILE_SIZE + TILE_SIZE/2;
+                const ny = b.y * TILE_SIZE + TILE_SIZE/2;
+
+                buildings.forEach(other => {
+                    if (other === b) return;
+                    if (other.type !== 'power-node' && other.type !== 'generator' && other.type !== 'laser') return;
+
+                    const ox = other.x * TILE_SIZE + TILE_SIZE/2;
+                    const oy = other.y * TILE_SIZE + TILE_SIZE/2;
+                    const dist = Math.sqrt((ox - nx)**2 + (oy - ny)**2);
+
+                    if (dist <= range) {
+                        const screenOx = ox - camera.x;
+                        const screenOy = oy - camera.y;
+                        graphics.lineStyle(1, 0xffcc00, 0.4);
+                        graphics.lineBetween(px + TILE_SIZE/2, py + TILE_SIZE/2, screenOx, screenOy);
+                    }
+                });
+
+            } else if (b.type === 'turret') {
+                // Duo turret - realistic top-down with rotation
+                graphics.fillStyle(0x333333);
+                graphics.fillRoundedRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6, 4);
+
+                // Turret base
+                graphics.fillStyle(0x444444);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 12);
+
+                // Gun housing
+                graphics.fillStyle(0xcc4444);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 9);
+
+                // Dual barrels - rotated toward target
+                const angle = b.turretAngle !== undefined ? b.turretAngle : -Math.PI/2;
+                const cx = px + TILE_SIZE/2;
+                const cy = py + TILE_SIZE/2;
+                const barrelLength = 12;
+                const barrelSpacing = 4;
+
+                graphics.fillStyle(0x666666);
+                // Left barrel
+                const lx1 = cx + Math.cos(angle) * barrelLength + Math.cos(angle + Math.PI/2) * barrelSpacing;
+                const ly1 = cy + Math.sin(angle) * barrelLength + Math.sin(angle + Math.PI/2) * barrelSpacing;
+                const lx2 = cx + Math.cos(angle + Math.PI/2) * barrelSpacing;
+                const ly2 = cy + Math.sin(angle + Math.PI/2) * barrelSpacing;
+                graphics.lineStyle(3, 0x666666);
+                graphics.lineBetween(lx2, ly2, lx1, ly1);
+
+                // Right barrel
+                const rx1 = cx + Math.cos(angle) * barrelLength + Math.cos(angle - Math.PI/2) * barrelSpacing;
+                const ry1 = cy + Math.sin(angle) * barrelLength + Math.sin(angle - Math.PI/2) * barrelSpacing;
+                const rx2 = cx + Math.cos(angle - Math.PI/2) * barrelSpacing;
+                const ry2 = cy + Math.sin(angle - Math.PI/2) * barrelSpacing;
+                graphics.lineBetween(rx2, ry2, rx1, ry1);
+
+                // Barrel tips
+                graphics.fillStyle(0x888888);
+                graphics.fillCircle(lx1, ly1, 2);
+                graphics.fillCircle(rx1, ry1, 2);
+
+                // Ammo indicator
+                if (b.ammo !== undefined) {
+                    const ammoPct = Math.min(1, b.ammo / 20);
+                    graphics.fillStyle(ammoPct > 0.3 ? 0x44ff44 : 0xff4444);
+                    graphics.fillRect(px + 3, py + TILE_SIZE - 5, (TILE_SIZE - 6) * ammoPct, 2);
+                }
+
+            } else if (b.type === 'scatter') {
+                // Scatter turret - triple barrel with rotation
+                graphics.fillStyle(0x333333);
+                graphics.fillRoundedRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6, 4);
+
+                graphics.fillStyle(0x444444);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 12);
+
+                graphics.fillStyle(0xcc6633);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 9);
+
+                // Triple barrels - rotated toward target
+                const scatterAngle = b.turretAngle !== undefined ? b.turretAngle : -Math.PI/2;
+                const scx = px + TILE_SIZE/2;
+                const scy = py + TILE_SIZE/2;
+                const scBarrelLength = 11;
+
+                graphics.lineStyle(4, 0x666666);
+                for (let i = -1; i <= 1; i++) {
+                    const spreadAngle = scatterAngle + i * 0.15;
+                    const bx1 = scx;
+                    const by1 = scy;
+                    const bx2 = scx + Math.cos(spreadAngle) * scBarrelLength;
+                    const by2 = scy + Math.sin(spreadAngle) * scBarrelLength;
+                    graphics.lineBetween(bx1, by1, bx2, by2);
+                }
+
+                // Ammo indicator
+                if (b.ammo !== undefined) {
+                    const ammoPct = Math.min(1, b.ammo / 20);
+                    graphics.fillStyle(ammoPct > 0.3 ? 0x44ff44 : 0xff4444);
+                    graphics.fillRect(px + 3, py + TILE_SIZE - 5, (TILE_SIZE - 6) * ammoPct, 2);
+                }
+
+            } else if (b.type === 'laser') {
+                // Arc turret - electric with rotation
+                graphics.fillStyle(0x222244);
+                graphics.fillRoundedRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6, 4);
+
+                graphics.fillStyle(0x333366);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 12);
+
+                if (b.powered) {
+                    graphics.fillStyle(0x4466cc);
+                    graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 9);
+
+                    // Electric arcs
+                    const spark = Math.sin(Date.now() / 50) * 0.5 + 0.5;
+                    graphics.fillStyle(0x88aaff, spark);
+                    graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 5);
+
+                    // Tesla coil pointing toward target
+                    const laserAngle = b.turretAngle !== undefined ? b.turretAngle : -Math.PI/2;
+                    const coilX = px + TILE_SIZE/2 + Math.cos(laserAngle) * 8;
+                    const coilY = py + TILE_SIZE/2 + Math.sin(laserAngle) * 8;
+                    graphics.fillStyle(0xaaccff, spark);
+                    graphics.fillCircle(coilX + Math.sin(Date.now() / 30) * 2, coilY + Math.cos(Date.now() / 30) * 2, 3);
+                } else {
+                    graphics.fillStyle(0x445566);
+                    graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 9);
+
+                    // No power X
+                    graphics.lineStyle(2, 0xff4444, 0.8);
+                    graphics.lineBetween(px + 8, py + 8, px + TILE_SIZE - 8, py + TILE_SIZE - 8);
+                    graphics.lineBetween(px + TILE_SIZE - 8, py + 8, px + 8, py + TILE_SIZE - 8);
+                }
+
+            } else if (b.type === 'wall') {
+                // Stone wall
+                graphics.fillStyle(0x555555);
+                graphics.fillRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+
+                // Brick pattern
+                graphics.fillStyle(0x666666);
+                graphics.fillRect(px + 4, py + 4, TILE_SIZE/2 - 4, TILE_SIZE/2 - 4);
+                graphics.fillRect(px + TILE_SIZE/2 + 2, py + TILE_SIZE/2 + 2, TILE_SIZE/2 - 4, TILE_SIZE/2 - 4);
+
+                graphics.fillStyle(0x4a4a4a);
+                graphics.fillRect(px + TILE_SIZE/2 + 2, py + 4, TILE_SIZE/2 - 4, TILE_SIZE/2 - 4);
+                graphics.fillRect(px + 4, py + TILE_SIZE/2 + 2, TILE_SIZE/2 - 4, TILE_SIZE/2 - 4);
+
+            } else if (b.type === 'titanium-wall') {
+                // Reinforced titanium wall
+                graphics.fillStyle(0x3a5c7b);
+                graphics.fillRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+
+                graphics.fillStyle(0x4a7c9b);
+                graphics.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+
+                // Metal shine
+                graphics.fillStyle(0x6a9cbb, 0.5);
+                graphics.fillRect(px + 6, py + 6, TILE_SIZE - 12, 4);
+
+                // Rivets
+                graphics.fillStyle(0x2a4c6b);
+                graphics.fillCircle(px + 6, py + 6, 2);
+                graphics.fillCircle(px + TILE_SIZE - 6, py + 6, 2);
+                graphics.fillCircle(px + 6, py + TILE_SIZE - 6, 2);
+                graphics.fillCircle(px + TILE_SIZE - 6, py + TILE_SIZE - 6, 2);
+
+            } else if (b.type === 'alloy-wall') {
+                // Reinforced alloy wall
+                graphics.fillStyle(0x8a6a5a);
+                graphics.fillRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+
+                graphics.fillStyle(0xb8967a);
+                graphics.fillRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8);
+
+                // Metal shine
+                graphics.fillStyle(0xd0b090, 0.5);
+                graphics.fillRect(px + 6, py + 6, TILE_SIZE - 12, 4);
+
+                // Heavy rivets
+                graphics.fillStyle(0x6a4a3a);
+                graphics.fillCircle(px + 6, py + 6, 3);
+                graphics.fillCircle(px + TILE_SIZE - 6, py + 6, 3);
+                graphics.fillCircle(px + 6, py + TILE_SIZE - 6, 3);
+                graphics.fillCircle(px + TILE_SIZE - 6, py + TILE_SIZE - 6, 3);
+
+            } else if (b.type === 'alloy-turret') {
+                // Salvo turret - alloy rapid fire with rotation
+                graphics.fillStyle(0x444444);
+                graphics.fillRoundedRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6, 4);
+
+                // Turret base
+                graphics.fillStyle(0x555555);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 12);
+
+                // Gun housing - alloy colored
+                graphics.fillStyle(0xb8967a);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 9);
+
+                // Quad barrels - rotated toward target
+                const salvoAngle = b.turretAngle !== undefined ? b.turretAngle : -Math.PI/2;
+                const salvoX = px + TILE_SIZE/2;
+                const salvoY = py + TILE_SIZE/2;
+                const salvoBarrelLength = 13;
+
+                graphics.lineStyle(2, 0x666666);
+                for (let i = -1.5; i <= 1.5; i++) {
+                    const spreadAngle = salvoAngle + i * 0.12;
+                    const bx2 = salvoX + Math.cos(spreadAngle) * salvoBarrelLength;
+                    const by2 = salvoY + Math.sin(spreadAngle) * salvoBarrelLength;
+                    graphics.lineBetween(salvoX, salvoY, bx2, by2);
+                }
+
+                // Ammo indicator
+                if (b.ammo !== undefined) {
+                    const ammoPct = Math.min(1, b.ammo / 20);
+                    graphics.fillStyle(ammoPct > 0.3 ? 0x44ff44 : 0xff4444);
+                    graphics.fillRect(px + 3, py + TILE_SIZE - 5, (TILE_SIZE - 6) * ammoPct, 2);
+                }
+
+            } else if (b.type === 'explosive') {
+                // Explosive bomb
+                const pulseAlpha = Math.sin(Date.now() / 300) * 0.2 + 0.8;
+
+                graphics.fillStyle(0x332211);
+                graphics.fillRoundedRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8, 4);
+
+                // Bomb body
+                graphics.fillStyle(0x883311);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 10);
+
+                // Warning stripes
+                graphics.fillStyle(0xffcc00);
+                graphics.fillRect(px + TILE_SIZE/2 - 6, py + TILE_SIZE/2 - 2, 12, 2);
+                graphics.fillRect(px + TILE_SIZE/2 - 6, py + TILE_SIZE/2 + 2, 12, 2);
+
+                // Fuse
+                graphics.lineStyle(2, 0x666666);
+                graphics.lineBetween(px + TILE_SIZE/2, py + 4, px + TILE_SIZE/2, py + 8);
+
+                // Sparking fuse tip
+                const spark = Math.random() > 0.5;
+                if (spark) {
+                    graphics.fillStyle(0xff6600, pulseAlpha);
+                    graphics.fillCircle(px + TILE_SIZE/2, py + 4, 2);
+                }
+
+            } else if (b.type === 'repair') {
+                // Repair station
+                graphics.fillStyle(0x225522);
+                graphics.fillRoundedRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6, 4);
+
+                graphics.fillStyle(0x338833);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 10);
+
+                // Green cross
+                graphics.fillStyle(0x44aa44);
+                graphics.fillRect(px + TILE_SIZE/2 - 2, py + TILE_SIZE/2 - 8, 4, 16);
+                graphics.fillRect(px + TILE_SIZE/2 - 8, py + TILE_SIZE/2 - 2, 16, 4);
+
+                // Healing glow when enemies nearby
+                if (enemies.length > 0) {
+                    const healGlow = Math.sin(Date.now() / 200) * 0.2 + 0.3;
+                    graphics.fillStyle(0x88ff88, healGlow);
+                    graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 14);
+                }
+            }
+
+            // Health bar for damaged buildings
+            if (b.type !== 'core' && b.health < b.maxHealth) {
+                const healthPct = b.health / b.maxHealth;
+                graphics.fillStyle(0x333333);
+                graphics.fillRect(px, py - 5, TILE_SIZE, 3);
+                graphics.fillStyle(healthPct > 0.5 ? 0x44ff44 : (healthPct > 0.25 ? 0xffff00 : 0xff4444));
+                graphics.fillRect(px, py - 5, TILE_SIZE * healthPct, 3);
+            }
+        }
+
+        function drawArrow(x, y, rot, color) {
+            const dir = getDirection(rot);
+            const len = 8;
+            graphics.lineStyle(2, color);
+            graphics.lineBetween(x - dir.x * len, y - dir.y * len, x + dir.x * len, y + dir.y * len);
+
+            const headLen = 5;
+            const perpX = -dir.y;
+            const perpY = dir.x;
+            graphics.lineBetween(
+                x + dir.x * len, y + dir.y * len,
+                x + dir.x * (len - headLen) + perpX * headLen/2,
+                y + dir.y * (len - headLen) + perpY * headLen/2
+            );
+            graphics.lineBetween(
+                x + dir.x * len, y + dir.y * len,
+                x + dir.x * (len - headLen) - perpX * headLen/2,
+                y + dir.y * (len - headLen) - perpY * headLen/2
+            );
+        }
+
+        function drawMinimap() {
+            const minimap = document.getElementById('minimap');
+            const ctx = minimap.getContext('2d');
+
+            minimap.width = 150;
+            minimap.height = 112;
+
+            const scaleX = minimap.width / (MAP_WIDTH * TILE_SIZE);
+            const scaleY = minimap.height / (MAP_HEIGHT * TILE_SIZE);
+
+            // Draw terrain
+            ctx.fillStyle = '#2a3a2a';
+            ctx.fillRect(0, 0, minimap.width, minimap.height);
+
+            // Draw buildings
+            buildings.forEach(b => {
+                if (b.type === 'core') {
+                    ctx.fillStyle = '#4CAF50';
+                    ctx.fillRect(b.x * TILE_SIZE * scaleX, b.y * TILE_SIZE * scaleY, TILE_SIZE * 2 * scaleX, TILE_SIZE * 2 * scaleY);
+                } else {
+                    ctx.fillStyle = b.type.includes('turret') || b.type === 'scatter' || b.type === 'laser' ? '#cc4444' :
+                                   b.type.includes('wall') ? '#666666' :
+                                   b.type === 'drill' || b.type === 'pneumatic-drill' ? '#8B4513' :
+                                   '#555555';
+                    ctx.fillRect(b.x * TILE_SIZE * scaleX, b.y * TILE_SIZE * scaleY, TILE_SIZE * scaleX, TILE_SIZE * scaleY);
+                }
+            });
+
+            // Draw enemies
+            ctx.fillStyle = '#ff4444';
+            enemies.forEach(e => {
+                if (e.delay <= 0) {
+                    ctx.fillRect(e.x * scaleX - 1, e.y * scaleY - 1, 3, 3);
+                }
+            });
+
+            // Draw player
+            ctx.fillStyle = '#4488ff';
+            ctx.fillRect(player.x * scaleX - 2, player.y * scaleY - 2, 5, 5);
+
+            // Draw viewport rectangle
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(
+                camera.x * scaleX,
+                camera.y * scaleY,
+                window.innerWidth * scaleX,
+                window.innerHeight * scaleY
+            );
+
+            // Draw spawn point
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(spawnPoint.x * TILE_SIZE * scaleX + TILE_SIZE * scaleX / 2,
+                   spawnPoint.y * TILE_SIZE * scaleY + TILE_SIZE * scaleY / 2, 4, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // Initialize
+        updateResourceUI();
+        updatePlayerHealthUI();
+    </script>
+</body>
+</html>
