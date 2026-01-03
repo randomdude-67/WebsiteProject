@@ -274,6 +274,24 @@
             color: #ffaa00;
         }
 
+        #version-display {
+            position: fixed;
+            bottom: 130px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 4px 8px;
+            border-radius: 3px;
+            color: #888;
+            font-size: 10px;
+            z-index: 90;
+        }
+
+        #factory-indicator {
+            position: fixed;
+            pointer-events: none;
+            z-index: 95;
+        }
+
         /* Info panel */
         #info-panel {
             position: fixed;
@@ -418,6 +436,8 @@
 
     <div id="tooltip" class="tooltip"></div>
     <div id="fps-counter">FPS: 60</div>
+    <div id="version-display">v0.4.0-alpha</div>
+    <canvas id="factory-indicator" width="100" height="100"></canvas>
 
     <div id="game"></div>
 
@@ -438,11 +458,11 @@
             respawnTimer: 0,
             invulnerable: 0,
             deaths: 0,
-            // Shooting properties
+            // Shooting properties (nerfed for balance)
             fireCooldown: 0,
-            fireCooldownMax: 150, // ms between shots
-            bulletSpeed: 12,
-            bulletDamage: 15
+            fireCooldownMax: 350, // ms between shots (slower fire rate)
+            bulletSpeed: 10,
+            bulletDamage: 8 // reduced damage
         };
 
         // Player bullets (separate from turret bullets)
@@ -553,6 +573,12 @@
                 category: 'power', cost: { copper: 15, lead: 15 }, health: 30,
                 icon: '⚡', name: 'P-Node', hotkey: '7',
                 desc: 'Distributes power', powerRange: 6, buildTime: 500
+            },
+            'large-power-node': {
+                category: 'power', cost: { copper: 60, lead: 60, titanium: 30 }, health: 80,
+                icon: '⚡', name: 'L-P-Node', hotkey: null,
+                desc: 'Large power node 2x2, extended range', powerRange: 12, buildTime: 1500,
+                width: 2, height: 2
             },
             turret: {
                 category: 'defense', cost: { copper: 60 }, health: 50,
@@ -694,6 +720,74 @@
         // Terrain texture cache for GPU optimization
         let terrainCache = null;
         let terrainCacheDirty = true;
+
+        // Object pooling for performance
+        const bulletPool = [];
+        const particlePool = [];
+        const POOL_SIZE = 200;
+
+        // Pre-allocate pool objects
+        for (let i = 0; i < POOL_SIZE; i++) {
+            bulletPool.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, damage: 0, life: 0 });
+            particlePool.push({ active: false, x: 0, y: 0, vx: 0, vy: 0, life: 0, color: 0, size: 0 });
+        }
+
+        // Spatial hash grid for fast collision lookups
+        const GRID_CELL_SIZE = TILE_SIZE * 4; // 4 tiles per cell
+        let spatialGrid = {};
+
+        function getSpatialKey(x, y) {
+            const gx = Math.floor(x / GRID_CELL_SIZE);
+            const gy = Math.floor(y / GRID_CELL_SIZE);
+            return `${gx},${gy}`;
+        }
+
+        function updateSpatialGrid() {
+            spatialGrid = {};
+
+            // Add enemies to grid
+            enemies.forEach((e, idx) => {
+                if (e.delay > 0) return;
+                const key = getSpatialKey(e.x, e.y);
+                if (!spatialGrid[key]) spatialGrid[key] = { enemies: [], buildings: [] };
+                spatialGrid[key].enemies.push(idx);
+            });
+
+            // Add buildings to grid
+            buildings.forEach((b, idx) => {
+                const w = b.width || 1;
+                const h = b.height || 1;
+                const cx = (b.x + w / 2) * TILE_SIZE;
+                const cy = (b.y + h / 2) * TILE_SIZE;
+                const key = getSpatialKey(cx, cy);
+                if (!spatialGrid[key]) spatialGrid[key] = { enemies: [], buildings: [] };
+                spatialGrid[key].buildings.push(idx);
+            });
+        }
+
+        function getNearbyEnemies(x, y, radius) {
+            const results = [];
+            const cellRadius = Math.ceil(radius / GRID_CELL_SIZE);
+            const gx = Math.floor(x / GRID_CELL_SIZE);
+            const gy = Math.floor(y / GRID_CELL_SIZE);
+
+            for (let dx = -cellRadius; dx <= cellRadius; dx++) {
+                for (let dy = -cellRadius; dy <= cellRadius; dy++) {
+                    const key = `${gx + dx},${gy + dy}`;
+                    const cell = spatialGrid[key];
+                    if (cell && cell.enemies) {
+                        cell.enemies.forEach(idx => {
+                            const e = enemies[idx];
+                            if (e && e.delay <= 0) {
+                                const dist = Math.sqrt((e.x - x) ** 2 + (e.y - y) ** 2);
+                                if (dist <= radius) results.push(e);
+                            }
+                        });
+                    }
+                }
+            }
+            return results;
+        }
 
         function preload() {}
 
@@ -1110,6 +1204,7 @@
                 generator: 'linear-gradient(135deg, #ff8800, #cc5500)',
                 'thermal-generator': 'linear-gradient(135deg, #ff4400, #aa2200)',
                 'power-node': 'linear-gradient(135deg, #ffcc00, #cc9900)',
+                'large-power-node': 'linear-gradient(135deg, #ffdd44, #ddaa00)',
                 turret: 'linear-gradient(135deg, #cc3333, #991111)',
                 scatter: 'linear-gradient(135deg, #cc6633, #994411)',
                 'alloy-turret': 'linear-gradient(135deg, #b8967a, #cc5555)',
@@ -1803,16 +1898,22 @@
 
             // Power all connected consumers (they all run but slower if not enough power)
             buildings.filter(b => b.type === 'laser' || b.type === 'alloy-factory' || b.type === 'repair').forEach(consumer => {
-                const cx = consumer.x * TILE_SIZE + TILE_SIZE/2;
-                const cy = consumer.y * TILE_SIZE + TILE_SIZE/2;
+                const cw = consumer.width || 1;
+                const ch = consumer.height || 1;
+                const cx = (consumer.x + cw / 2) * TILE_SIZE;
+                const cy = (consumer.y + ch / 2) * TILE_SIZE;
 
                 const connected = buildings.some(node => {
                     // Power nodes can connect to generators, other power nodes, and any building that produces power
-                    if (node.type !== 'power-node' && node.type !== 'generator' && node.type !== 'thermal-generator') return false;
-                    const nx = node.x * TILE_SIZE + TILE_SIZE/2;
-                    const ny = node.y * TILE_SIZE + TILE_SIZE/2;
+                    if (node.type !== 'power-node' && node.type !== 'large-power-node' && node.type !== 'generator' && node.type !== 'thermal-generator') return false;
+                    const nw = node.width || 1;
+                    const nh = node.height || 1;
+                    const nx = (node.x + nw / 2) * TILE_SIZE;
+                    const ny = (node.y + nh / 2) * TILE_SIZE;
                     const dist = Math.sqrt((cx - nx)**2 + (cy - ny)**2);
-                    return dist <= BUILDINGS['power-node'].powerRange * TILE_SIZE;
+                    const nodeData = BUILDINGS[node.type];
+                    const range = nodeData.powerRange || BUILDINGS['power-node'].powerRange;
+                    return dist <= range * TILE_SIZE;
                 });
 
                 consumer.powered = connected;
@@ -2650,14 +2751,14 @@
                 if (wave >= 15 && roll < 0.05) enemyType = 'boss';
 
                 const stats = {
-                    basic: { health: 40 + wave * 5, speed: 0.9, size: 12, color: 0xff5555, damage: 2, canShoot: true, range: 5, fireCooldown: 500, bulletSpeed: 8, useLaser: false },
-                    fast: { health: 20 + wave * 3, speed: 1.8, size: 10, color: 0xffaa00, damage: 30, canShoot: false, isKamikaze: true, explosionRange: 1.5, useLaser: false },
-                    shooter: { health: 30 + wave * 4, speed: 0.7, size: 11, color: 0xff8844, damage: 3, canShoot: true, range: 6, fireCooldown: 500, bulletSpeed: 9, useLaser: false },
-                    sniper: { health: 25 + wave * 3, speed: 0.5, size: 10, color: 0x8844ff, damage: 4, canShoot: true, range: 10, fireCooldown: 1500, bulletSpeed: 12, useLaser: true, laserColor: 0x8844ff },
-                    artillery: { health: 60 + wave * 6, speed: 0.3, size: 16, color: 0x448844, damage: 5, canShoot: true, range: 12, fireCooldown: 500, bulletSpeed: 7, splash: true, useLaser: false },
-                    tank: { health: 100 + wave * 12, speed: 0.35, size: 18, color: 0x884444, damage: 4, canShoot: true, range: 6, fireCooldown: 1000, bulletSpeed: 9, useLaser: true, laserColor: 0xff4444 },
-                    swarm: { health: 15 + wave * 2, speed: 2.2, size: 8, color: 0xff88ff, damage: 20, canShoot: false, isKamikaze: true, explosionRange: 1, useLaser: false },
-                    boss: { health: 300 + wave * 25, speed: 0.25, size: 26, color: 0xff0000, damage: 6, canShoot: true, range: 9, fireCooldown: 800, bulletSpeed: 10, useLaser: true, laserColor: 0xff0000 }
+                    basic: { health: 40 + wave * 5, speed: 0.9, size: 12, color: 0xff5555, damage: 8, canShoot: true, range: 5, fireCooldown: 400, bulletSpeed: 9, useLaser: false },
+                    fast: { health: 20 + wave * 3, speed: 1.8, size: 10, color: 0xffaa00, damage: 50, canShoot: false, isKamikaze: true, explosionRange: 1.5, useLaser: false },
+                    shooter: { health: 30 + wave * 4, speed: 0.7, size: 11, color: 0xff8844, damage: 12, canShoot: true, range: 6, fireCooldown: 400, bulletSpeed: 10, useLaser: false },
+                    sniper: { health: 25 + wave * 3, speed: 0.5, size: 10, color: 0x8844ff, damage: 18, canShoot: true, range: 10, fireCooldown: 1200, bulletSpeed: 14, useLaser: true, laserColor: 0x8844ff },
+                    artillery: { health: 60 + wave * 6, speed: 0.3, size: 16, color: 0x448844, damage: 15, canShoot: true, range: 12, fireCooldown: 400, bulletSpeed: 8, splash: true, useLaser: false },
+                    tank: { health: 100 + wave * 12, speed: 0.35, size: 18, color: 0x884444, damage: 20, canShoot: true, range: 6, fireCooldown: 800, bulletSpeed: 10, useLaser: true, laserColor: 0xff4444 },
+                    swarm: { health: 15 + wave * 2, speed: 2.2, size: 8, color: 0xff88ff, damage: 35, canShoot: false, isKamikaze: true, explosionRange: 1, useLaser: false },
+                    boss: { health: 300 + wave * 25, speed: 0.25, size: 26, color: 0xff0000, damage: 25, canShoot: true, range: 9, fireCooldown: 600, bulletSpeed: 12, useLaser: true, laserColor: 0xff0000 }
                 }[enemyType];
 
                 enemies.push({
@@ -2762,6 +2863,9 @@
         function update(time, delta) {
             // Cache timestamp for performance
             const now = Date.now();
+
+            // Update spatial grid for optimized collision detection (every frame)
+            updateSpatialGrid();
 
             // FPS counter update (every 500ms)
             frameCount++;
@@ -3650,9 +3754,11 @@
                                 enemy.laserTarget = null;
                             }
 
-                            // Deal damage when laser is active
+                            // Deal damage when laser is active (increased laser damage)
                             if (enemy.laserActive) {
-                                player.health -= enemy.damage * 0.1; // Per frame damage while active
+                                player.health -= enemy.damage * 0.35; // Per frame damage while active (greatly increased)
+                                updatePlayerHealthUI();
+                                spawnParticles(player.x, player.y, 0xff4444, 2);
                                 if (player.health <= 0 && player.respawnTimer <= 0) {
                                     respawnPlayer();
                                 }
@@ -3695,9 +3801,10 @@
                                     targetX: player.x,
                                     targetY: player.y,
                                     speed: enemy.bulletSpeed || 4,
-                                    damage: enemy.damage * 5,
+                                    damage: enemy.damage * 8, // Greatly increased damage to player
                                     splash: enemy.splash,
-                                    enemyType: enemy.type
+                                    enemyType: enemy.type,
+                                    targetIsPlayer: true
                                 });
                                 enemy.lastFire = 0;
                             } else if (targetBuilding && dist < enemy.range * TILE_SIZE) {
@@ -3710,7 +3817,7 @@
                                     targetX: targetX,
                                     targetY: targetY,
                                     speed: enemy.bulletSpeed || 4,
-                                    damage: enemy.damage * 3,
+                                    damage: enemy.damage * 5, // Increased building damage
                                     targetBuilding: targetBuilding,
                                     splash: enemy.splash,
                                     enemyType: enemy.type
@@ -4098,18 +4205,18 @@
                     const ty = b.y * TILE_SIZE + TILE_SIZE/2;
                     const range = data.range * TILE_SIZE;
 
-                    // Find closest enemy for targeting (always track, even when on cooldown)
+                    // Find closest enemy for targeting using spatial grid (optimized)
                     let closest = null;
                     let closestDist = Infinity;
 
-                    enemies.forEach(e => {
-                        if (e.delay > 0) return;
+                    const nearbyEnemies = getNearbyEnemies(tx, ty, range);
+                    for (const e of nearbyEnemies) {
                         const dist = Math.sqrt((e.x - tx)**2 + (e.y - ty)**2);
-                        if (dist < closestDist && dist < range) {
+                        if (dist < closestDist) {
                             closest = e;
                             closestDist = dist;
                         }
-                    });
+                    }
 
                     // Update turret rotation to track target smoothly
                     if (closest) {
@@ -4167,32 +4274,31 @@
                             graphics.lineStyle(3, 0x6666ff, 0.8);
                             graphics.lineBetween(screenTx, screenTy, screenEx, screenEy);
 
-                            // Chain lightning
-                            enemies.forEach(e2 => {
-                                if (e2 !== closest && e2.delay <= 0) {
-                                    const chainDist = Math.sqrt((e2.x - closest.x)**2 + (e2.y - closest.y)**2);
-                                    if (chainDist < TILE_SIZE * 2) {
-                                        e2.health -= data.damage * 0.5;
-                                        const screen2x = e2.x - camera.x;
-                                        const screen2y = e2.y - camera.y;
-                                        graphics.lineStyle(2, 0x4444cc, 0.6);
-                                        graphics.lineBetween(screenEx, screenEy, screen2x, screen2y);
-                                    }
+                            // Chain lightning (optimized with spatial grid)
+                            const chainEnemies = getNearbyEnemies(closest.x, closest.y, TILE_SIZE * 2);
+                            for (const e2 of chainEnemies) {
+                                if (e2 !== closest) {
+                                    e2.health -= data.damage * 0.5;
+                                    const screen2x = e2.x - camera.x;
+                                    const screen2y = e2.y - camera.y;
+                                    graphics.lineStyle(2, 0x4444cc, 0.6);
+                                    graphics.lineBetween(screenEx, screenEy, screen2x, screen2y);
                                 }
-                            });
+                            }
                         } else if (b.type === 'stormer') {
                             // Stormer fires continuous sand stream, hits multiple enemies in cone
                             const angle = b.turretAngle || Math.atan2(closest.y - ty, closest.x - tx);
                             const coneWidth = 0.4; // Cone spread in radians
-                            
-                            enemies.forEach(e => {
-                                if (e.delay > 0) return;
+
+                            // Optimized with spatial grid
+                            const coneEnemies = getNearbyEnemies(tx, ty, range);
+                            for (const e of coneEnemies) {
                                 const dist = Math.sqrt((e.x - tx)**2 + (e.y - ty)**2);
                                 const angleToEnemy = Math.atan2(e.y - ty, e.x - tx);
                                 let angleDiff = angleToEnemy - angle;
                                 while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                                 while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                                
+
                                 if (dist < range && Math.abs(angleDiff) < coneWidth) {
                                     e.health -= data.damage;
                                     // Apply slow effect
@@ -4200,7 +4306,7 @@
                                     e.slowFactor = data.slowEffect; // 50% speed
                                     spawnParticles(e.x, e.y, 0xc9b592, 5);
                                 }
-                            });
+                            }
                             
                             // Visual sand blast effect
                             const screenTx = tx - camera.x;
@@ -4432,6 +4538,7 @@
 
             // Draw minimap
             drawMinimap();
+            drawFactoryIndicator();
         }
 
         function drawPlayer() {
@@ -5532,7 +5639,7 @@
                     if (other === b) return;
                     // Connect to power sources, other power nodes, and all power consumers
                     const isPowerSource = other.type === 'generator' || other.type === 'thermal-generator';
-                    const isPowerNode = other.type === 'power-node';
+                    const isPowerNode = other.type === 'power-node' || other.type === 'large-power-node';
                     const isPowerConsumer = other.type === 'laser' || other.type === 'alloy-factory' || other.type === 'repair' || other.type === 'miner-constructor';
 
                     if (!isPowerSource && !isPowerNode && !isPowerConsumer) return;
@@ -5548,6 +5655,85 @@
                         const screenOy = oy - camera.y;
                         graphics.lineStyle(1, 0xffcc00, 0.4);
                         graphics.lineBetween(px + TILE_SIZE/2, py + TILE_SIZE/2, screenOx, screenOy);
+                    }
+                });
+
+            } else if (b.type === 'large-power-node') {
+                // Large Power Node - 2x2 with extended range
+                const nodeW = TILE_SIZE * 2;
+                const nodeH = TILE_SIZE * 2;
+                const centerX = px + nodeW / 2;
+                const centerY = py + nodeH / 2;
+
+                // Base platform
+                graphics.fillStyle(0x443300);
+                graphics.fillRoundedRect(px + 2, py + 2, nodeW - 4, nodeH - 4, 6);
+
+                // Inner housing
+                graphics.fillStyle(0x665500);
+                graphics.fillRoundedRect(px + 6, py + 6, nodeW - 12, nodeH - 12, 4);
+
+                // Electric coils at corners
+                graphics.fillStyle(0x887700);
+                graphics.fillCircle(px + 14, py + 14, 6);
+                graphics.fillCircle(px + nodeW - 14, py + 14, 6);
+                graphics.fillCircle(px + 14, py + nodeH - 14, 6);
+                graphics.fillCircle(px + nodeW - 14, py + nodeH - 14, 6);
+
+                // Central large coil
+                graphics.fillStyle(0x998800);
+                graphics.fillCircle(centerX, centerY, 16);
+                graphics.fillStyle(0x776600);
+                graphics.fillCircle(centerX, centerY, 12);
+
+                // Glowing core with pulse effect
+                const lgGlow = Math.sin(Date.now() / 80) * 0.3 + 0.6;
+                graphics.fillStyle(0xffdd00, lgGlow);
+                graphics.fillCircle(centerX, centerY, 10);
+                graphics.fillStyle(0xffff66, lgGlow * 0.9);
+                graphics.fillCircle(centerX, centerY, 6);
+                graphics.fillStyle(0xffffaa, lgGlow * 0.7);
+                graphics.fillCircle(centerX, centerY, 3);
+
+                // Connection points on all sides
+                graphics.fillStyle(0xddbb00);
+                graphics.fillCircle(centerX, py + 4, 4);
+                graphics.fillCircle(centerX, py + nodeH - 4, 4);
+                graphics.fillCircle(px + 4, centerY, 4);
+                graphics.fillCircle(px + nodeW - 4, centerY, 4);
+
+                // Energy arcs between corner coils
+                const arcPulse = Math.sin(Date.now() / 60) * 0.4 + 0.6;
+                graphics.lineStyle(2, 0xffee00, arcPulse * 0.5);
+                graphics.lineBetween(px + 14, py + 14, px + nodeW - 14, py + 14);
+                graphics.lineBetween(px + nodeW - 14, py + 14, px + nodeW - 14, py + nodeH - 14);
+                graphics.lineBetween(px + nodeW - 14, py + nodeH - 14, px + 14, py + nodeH - 14);
+                graphics.lineBetween(px + 14, py + nodeH - 14, px + 14, py + 14);
+
+                // Draw power connections with extended range
+                const lgRange = BUILDINGS['large-power-node'].powerRange * TILE_SIZE;
+                const lgNx = (b.x + 1) * TILE_SIZE;
+                const lgNy = (b.y + 1) * TILE_SIZE;
+
+                buildings.forEach(other => {
+                    if (other === b) return;
+                    const isPowerSource = other.type === 'generator' || other.type === 'thermal-generator';
+                    const isPowerNode = other.type === 'power-node' || other.type === 'large-power-node';
+                    const isPowerConsumer = other.type === 'laser' || other.type === 'alloy-factory' || other.type === 'repair' || other.type === 'miner-constructor';
+
+                    if (!isPowerSource && !isPowerNode && !isPowerConsumer) return;
+
+                    const ow = other.width || 1;
+                    const oh = other.height || 1;
+                    const ox = (other.x + ow / 2) * TILE_SIZE;
+                    const oy = (other.y + oh / 2) * TILE_SIZE;
+                    const dist = Math.sqrt((ox - lgNx)**2 + (oy - lgNy)**2);
+
+                    if (dist <= lgRange) {
+                        const screenOx = ox - camera.x;
+                        const screenOy = oy - camera.y;
+                        graphics.lineStyle(2, 0xffdd00, 0.5);
+                        graphics.lineBetween(centerX, centerY, screenOx, screenOy);
                     }
                 });
 
@@ -5992,6 +6178,98 @@
             ctx.arc(spawnPoint.x * TILE_SIZE * scaleX + TILE_SIZE * scaleX / 2,
                    spawnPoint.y * TILE_SIZE * scaleY + TILE_SIZE * scaleY / 2, 4, 0, Math.PI * 2);
             ctx.fill();
+        }
+
+        // Draw factory indicator arrow pointing to miner-constructor when off-screen
+        function drawFactoryIndicator() {
+            const factory = buildings.find(b => b.type === 'miner-constructor');
+            if (!factory) {
+                document.getElementById('factory-indicator').style.display = 'none';
+                return;
+            }
+
+            // Calculate factory center in world coordinates
+            const factoryX = (factory.x + 1) * TILE_SIZE; // 2x2 center
+            const factoryY = (factory.y + 1) * TILE_SIZE;
+
+            // Calculate factory position on screen
+            const screenX = factoryX - camera.x;
+            const screenY = factoryY - camera.y;
+
+            // Check if factory is visible on screen (with some margin)
+            const margin = 50;
+            const isOnScreen = screenX >= -margin && screenX <= window.innerWidth / zoom + margin &&
+                              screenY >= -margin && screenY <= window.innerHeight / zoom + margin;
+
+            const indicator = document.getElementById('factory-indicator');
+
+            if (isOnScreen) {
+                indicator.style.display = 'none';
+                return;
+            }
+
+            // Show indicator
+            indicator.style.display = 'block';
+
+            // Calculate angle from player to factory
+            const dx = factoryX - player.x;
+            const dy = factoryY - player.y;
+            const angle = Math.atan2(dy, dx);
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            // Position indicator at screen edge
+            const edgeMargin = 60;
+            const centerX = window.innerWidth / 2;
+            const centerY = window.innerHeight / 2;
+
+            // Calculate where the arrow should be placed (at screen edge)
+            let indicatorX = centerX + Math.cos(angle) * (centerX - edgeMargin);
+            let indicatorY = centerY + Math.sin(angle) * (centerY - edgeMargin);
+
+            // Clamp to screen bounds
+            indicatorX = Math.max(edgeMargin, Math.min(window.innerWidth - edgeMargin, indicatorX));
+            indicatorY = Math.max(edgeMargin, Math.min(window.innerHeight - edgeMargin, indicatorY));
+
+            indicator.style.left = (indicatorX - 50) + 'px';
+            indicator.style.top = (indicatorY - 50) + 'px';
+
+            // Draw arrow on canvas
+            const ctx = indicator.getContext('2d');
+            ctx.clearRect(0, 0, 100, 100);
+
+            ctx.save();
+            ctx.translate(50, 50);
+            ctx.rotate(angle);
+
+            // Arrow body
+            ctx.fillStyle = '#44aa44';
+            ctx.globalAlpha = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(25, 0);  // Tip
+            ctx.lineTo(-15, -12);
+            ctx.lineTo(-10, 0);
+            ctx.lineTo(-15, 12);
+            ctx.closePath();
+            ctx.fill();
+
+            // Arrow outline
+            ctx.strokeStyle = '#88ff88';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Distance text
+            ctx.restore();
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 10px monospace';
+            ctx.textAlign = 'center';
+            ctx.globalAlpha = 1;
+            const distText = Math.round(distance / TILE_SIZE) + 'm';
+            ctx.fillText(distText, 50, 85);
+
+            // Factory icon
+            ctx.fillStyle = '#44ff44';
+            ctx.font = '12px monospace';
+            ctx.fillText('FAC', 50, 20);
         }
 
         // Initialize
