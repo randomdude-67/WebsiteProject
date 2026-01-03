@@ -1,0 +1,4 @@
+PRD: notdustry (mindustry ripoff)
+Features: Similar to mindustry, havae all the same things or similar things that mindustry has
+including gameplay loop, economy, and units.
+Success check: fun2play

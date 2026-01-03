@@ -345,6 +345,7 @@
         <div id="category-tabs">
             <button class="category-tab active" data-category="production">Production</button>
             <button class="category-tab" data-category="transport">Transport</button>
+            <button class="category-tab" data-category="units">Units</button>
             <button class="category-tab" data-category="power">Power</button>
             <button class="category-tab" data-category="defense">Defense</button>
             <button class="category-tab" data-category="tools">Tools</button>
@@ -432,123 +433,129 @@
                 category: 'production', cost: { copper: 12 }, health: 40,
                 icon: '⛏', name: 'Drill', hotkey: '1',
                 desc: 'Mines ore deposits', mineSpeed: 1,
-                width: 2, height: 2
+                width: 2, height: 2, buildTime: 500
             },
             'pneumatic-drill': {
                 category: 'production', cost: { copper: 45, graphite: 15 }, health: 50,
                 icon: '⚙', name: 'P-Drill', hotkey: '2',
                 desc: 'Fast mining 2x speed', mineSpeed: 2,
-                width: 2, height: 2
+                width: 2, height: 2, buildTime: 500
             },
             'alloy-drill': {
                 category: 'production', cost: { alloy: 45, titanium: 30 }, health: 80,
                 icon: '🔩', name: 'A-Drill', hotkey: null,
                 desc: 'Alloy drill 4x speed', mineSpeed: 4,
-                width: 2, height: 2
+                width: 2, height: 2, buildTime: 1000
             },
             'graphite-press': {
                 category: 'production', cost: { copper: 60, lead: 40 }, health: 60,
                 icon: '⬛', name: 'Graphite Press', hotkey: null,
                 desc: 'Compresses 2 coal into 1 graphite', craftTime: 2000,
-                width: 2, height: 2
+                width: 2, height: 2, buildTime: 1500
             },
             'alloy-factory': {
                 category: 'production', cost: { copper: 90, lead: 90 }, health: 60,
                 icon: '🏭', name: 'Alloy Factory', hotkey: null,
-                desc: 'Combines lead+titanium into alloy (needs power)', craftTime: 3000, powerUse: 3,
-                width: 2, height: 2
+                desc: 'Combines lead+titanium into alloy (needs power)', craftTime: 3000, powerUse: 5,
+                width: 2, height: 2, buildTime: 2000
             },
             'miner-constructor': {
-                category: 'production', cost: { lead: 120, titanium: 120 }, health: 100,
+                category: 'units', cost: { lead: 120, titanium: 120 }, health: 100,
                 icon: '🏗️', name: 'Miner Constructor', hotkey: null,
-                desc: 'Builds mining drones (50 lead+titanium, 60s)', craftTime: 60000,
-                width: 2, height: 2
+                desc: 'Builds mining drones (50 lead+titanium, 30s)', craftTime: 30000,
+                width: 2, height: 2, buildTime: 3000
             },
             conveyor: {
                 category: 'transport', cost: { copper: 1 }, health: 20,
                 icon: '➡', name: 'Conveyor', hotkey: '3',
-                desc: 'Moves items in one direction'
+                desc: 'Moves items in one direction', buildTime: 200
             },
             'alloy-conveyor': {
                 category: 'transport', cost: { alloy: 3 }, health: 40,
                 icon: '⇒', name: 'A-Conveyor', hotkey: null,
-                desc: 'Fast alloy conveyor 2x speed', speedMult: 2
+                desc: 'Fast alloy conveyor 2x speed', speedMult: 2, buildTime: 300
             },
             router: {
                 category: 'transport', cost: { copper: 15 }, health: 30,
                 icon: '✚', name: 'Router', hotkey: '4',
-                desc: 'Splits items 3 ways'
+                desc: 'Splits items 3 ways', buildTime: 300
             },
             junction: {
                 category: 'transport', cost: { copper: 9, lead: 9 }, health: 25,
                 icon: '╋', name: 'Junction', hotkey: '5',
-                desc: 'Items pass through'
+                desc: 'Items pass through', buildTime: 300
+            },
+            'payload-conveyor': {
+                category: 'units', cost: { titanium: 15, alloy: 10 }, health: 35,
+                icon: '⊞', name: 'Payload Conv', hotkey: null,
+                desc: 'Transports miner drones', buildTime: 500,
+                width: 2, height: 2
             },
             generator: {
                 category: 'power', cost: { copper: 60, lead: 30 }, health: 60,
                 icon: '🔥', name: 'Generator', hotkey: '6',
-                desc: 'Burns coal for power', powerOutput: 10, coalConsume: 0.1
+                desc: 'Burns coal for power', powerOutput: 10, coalConsume: 0.1, buildTime: 1000
             },
             'thermal-generator': {
                 category: 'power', cost: { graphite: 80, lead: 120, titanium: 50 }, health: 100,
                 icon: '⚡', name: 'Thermal Gen', hotkey: null,
                 desc: 'Burns coal+lead for 30 power', powerOutput: 30, coalConsume: 0.15, leadConsume: 0.1,
-                width: 2, height: 2
+                width: 2, height: 2, buildTime: 2000
             },
             'power-node': {
                 category: 'power', cost: { copper: 15, lead: 15 }, health: 30,
                 icon: '⚡', name: 'P-Node', hotkey: '7',
-                desc: 'Distributes power', powerRange: 6
+                desc: 'Distributes power', powerRange: 6, buildTime: 500
             },
             turret: {
                 category: 'defense', cost: { copper: 60 }, health: 50,
                 icon: '🔫', name: 'Duo', hotkey: '8',
-                desc: 'Rapid fire turret (uses copper)', damage: 8, range: 6, cooldown: 400, ammoType: 'copper', ammoUse: 1
+                desc: 'Rapid fire turret (uses copper)', damage: 8, range: 6, cooldown: 400, ammoType: 'copper', ammoUse: 1, buildTime: 3000
             },
             scatter: {
                 category: 'defense', cost: { copper: 90, lead: 60 }, health: 60,
                 icon: '💥', name: 'Scatter', hotkey: '9',
-                desc: 'Fires 3 shot spread (uses lead)', damage: 4, range: 10, cooldown: 150, shots: 3, ammoType: 'lead', ammoUse: 2
+                desc: 'Fires 3 shot spread (uses lead)', damage: 4, range: 10, cooldown: 150, shots: 3, ammoType: 'lead', ammoUse: 2, buildTime: 4000
             },
             laser: {
                 category: 'defense', cost: { copper: 120, lead: 90 }, health: 45,
                 icon: '⚡', name: 'Arc', hotkey: '0',
-                desc: 'Electric arc (needs power)', damage: 15, range: 8, cooldown: 800, powerUse: 5
+                desc: 'Electric arc (needs power)', damage: 15, range: 8, cooldown: 800, powerUse: 2, buildTime: 3000
             },
             stormer: {
                 category: 'defense', cost: { titanium: 70, copper: 50, lead: 40 }, health: 70,
                 icon: '🌪', name: 'Stormer', hotkey: null,
-                desc: 'Blasts sand like flamethrower, slows enemies', damage: 2, range: 5, cooldown: 100, ammoType: 'sand', ammoUse: 1, slowEffect: 0.5
+                desc: 'Blasts sand like flamethrower, slows enemies', damage: 2, range: 5, cooldown: 100, ammoType: 'sand', ammoUse: 1, slowEffect: 0.5, buildTime: 4000
             },
             wall: {
                 category: 'defense', cost: { copper: 6 }, health: 80,
                 icon: '▪', name: 'Wall', hotkey: 'Q',
-                desc: 'Basic defense'
+                desc: 'Basic defense', buildTime: 300
             },
             'titanium-wall': {
                 category: 'defense', cost: { titanium: 15 }, health: 200,
                 icon: '▣', name: 'Ti-Wall', hotkey: 'E',
-                desc: 'Strong titanium wall'
+                desc: 'Strong titanium wall', buildTime: 500
             },
             'alloy-wall': {
                 category: 'defense', cost: { alloy: 24 }, health: 650,
                 icon: '▦', name: 'A-Wall', hotkey: null,
-                desc: 'Reinforced alloy wall'
+                desc: 'Reinforced alloy wall', buildTime: 1000
             },
             'alloy-turret': {
                 category: 'defense', cost: { alloy: 75, titanium: 45 }, health: 100,
                 icon: '🎯', name: 'Salvo', hotkey: null,
-                desc: 'Rapid alloy turret (uses alloy)', damage: 12, range: 8, cooldown: 250, ammoType: 'alloy', ammoUse: 1
+                desc: 'Rapid alloy turret (uses alloy)', damage: 12, range: 8, cooldown: 250, ammoType: 'alloy', ammoUse: 1, buildTime: 5000
             },
             explosive: {
                 category: 'defense', cost: { copper: 45, coal: 30 }, health: 30,
                 icon: '💣', name: 'Bomb', hotkey: 'B',
-                desc: 'Explodes when destroyed!', explosionDamage: 80, explosionRange: 3
+                desc: 'Explodes when destroyed!', explosionDamage: 80, explosionRange: 3, buildTime: 1000
             },
             repair: {
                 category: 'defense', cost: { copper: 75, lead: 45 }, health: 40,
                 icon: '🔧', name: 'Repair', hotkey: 'F',
-                desc: 'Repairs nearby buildings (needs power)', repairRange: 5, powerUse: 2
+                desc: 'Repairs nearby buildings (needs power)', repairRange: 5, powerUse: 1, buildTime: 2000
             },
             delete: {
                 category: 'tools', cost: {}, health: 0,
@@ -563,7 +570,10 @@
         let currentCategory = 'production';
         let rotation = 0;
         let miningCooldown = 0;
+        let miningTarget = null; // Store current mining target for laser rendering
+        let tooltipCollapsed = false; // Track tooltip collapse state
         let buildings = [];
+        let constructionQueue = []; // Buildings currently being built
         let enemies = [];
         let bullets = [];
         let enemyBullets = [];
@@ -571,7 +581,7 @@
         let particles = [];
         let miners = []; // Mining drones
         let wave = 0;
-        let waveTimer = 600; // Start with 600 seconds (10 minutes - first wave)
+        let waveTimer = 240; // Start with 240 seconds (4 minutes - first wave)
         let coreHealth = 500;
         let maxCoreHealth = 500;
         let gameOver = false;
@@ -923,6 +933,7 @@
                 'miner-constructor': 'linear-gradient(135deg, #44aa44, #227722)',
                 conveyor: 'linear-gradient(135deg, #555, #333)',
                 'alloy-conveyor': 'linear-gradient(135deg, #b8967a, #8a6a5a)',
+                'payload-conveyor': 'linear-gradient(135deg, #4a7c9b, #2a5c7b)',
                 router: 'linear-gradient(135deg, #666699, #444477)',
                 junction: 'linear-gradient(135deg, #996666, #774444)',
                 generator: 'linear-gradient(135deg, #ff8800, #cc5500)',
@@ -1048,13 +1059,19 @@
         }
 
         function handlePointerMove(pointer) {
-            if (!isDragging || !selectedBuilding || selectedBuilding === 'delete') return;
+            if (!isDragging || !selectedBuilding) return;
 
             const world = screenToWorld(pointer.x, pointer.y);
             const tile = worldToTile(world.x, world.y);
 
             if (lastDragTile && (tile.x !== lastDragTile.x || tile.y !== lastDragTile.y)) {
-                tryPlaceBuilding(tile.x, tile.y);
+                if (selectedBuilding === 'delete') {
+                    // Drag deleting
+                    tryDeleteBuilding(tile.x, tile.y);
+                } else {
+                    // Drag placing
+                    tryPlaceBuilding(tile.x, tile.y);
+                }
                 lastDragTile = tile;
             }
 
@@ -1081,9 +1098,43 @@
                     const healthPct = Math.ceil((building.health / building.maxHealth) * 100);
                     const healthColor = healthPct > 50 ? '#4CAF50' : (healthPct > 25 ? '#ffaa00' : '#ff4444');
 
-                    let html = `<div class="tooltip-title">${building.type === 'core' ? 'Core' : data.name}</div>`;
-                    html += `<div class="tooltip-stat">${data.desc}</div>`;
-                    html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Health:</span> <span style="color:${healthColor}">${Math.ceil(building.health)}/${building.maxHealth}</span></div>`;
+                    let html = `<div class="tooltip-title" style="cursor:pointer;user-select:none;" onclick="tooltipCollapsed = !tooltipCollapsed">${building.type === 'core' ? 'Core' : data.name} <span style="font-size:12px">${tooltipCollapsed ? '▶' : '▼'}</span></div>`;
+
+                    if (!tooltipCollapsed) {
+                        html += `<div class="tooltip-stat">${data.desc}</div>`;
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Health:</span> <span style="color:${healthColor}">${Math.ceil(building.health)}/${building.maxHealth}</span></div>`;
+
+                        // Show stored items
+                        let hasStorage = false;
+                        let storageHtml = '';
+                        if (building.coalStored > 0) {
+                            storageHtml += `<div class="tooltip-stat"><span class="tooltip-stat-label">Coal:</span> <span style="color:${getOreColorCSS('coal')}">${Math.floor(building.coalStored)}</span></div>`;
+                            hasStorage = true;
+                        }
+                        if (building.leadStored > 0) {
+                            storageHtml += `<div class="tooltip-stat"><span class="tooltip-stat-label">Lead:</span> <span style="color:${getOreColorCSS('lead')}">${Math.floor(building.leadStored)}</span></div>`;
+                            hasStorage = true;
+                        }
+                        if (building.titaniumStored > 0) {
+                            storageHtml += `<div class="tooltip-stat"><span class="tooltip-stat-label">Titanium:</span> <span style="color:${getOreColorCSS('titanium')}">${Math.floor(building.titaniumStored)}</span></div>`;
+                            hasStorage = true;
+                        }
+                        if (building.graphiteStored > 0) {
+                            storageHtml += `<div class="tooltip-stat"><span class="tooltip-stat-label">Graphite:</span> <span style="color:${getOreColorCSS('graphite')}">${Math.floor(building.graphiteStored)}</span></div>`;
+                            hasStorage = true;
+                        }
+                        if (building.alloyStored > 0) {
+                            storageHtml += `<div class="tooltip-stat"><span class="tooltip-stat-label">Alloy:</span> <span style="color:${getOreColorCSS('alloy')}">${Math.floor(building.alloyStored)}</span></div>`;
+                            hasStorage = true;
+                        }
+                        if (hasStorage) {
+                            html += `<div style="margin-top:6px;border-top:1px solid #444;padding-top:6px">${storageHtml}</div>`;
+                        }
+                    } else {
+                        html += `<div class="tooltip-stat" style="color:#888;font-size:11px">Click to expand...</div>`;
+                    }
+
+                    if (!tooltipCollapsed) {
 
                     if (data.damage) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Damage:</span> ${data.damage}</div>`;
                     if (data.range) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Range:</span> ${data.range} tiles</div>`;
@@ -1131,11 +1182,11 @@
                         }
                     }
                     if (data.mineSpeed) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Base speed:</span> ${data.mineSpeed}x</div>`;
-                    if (building.coalStored !== undefined) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Coal stored:</span> ${Math.floor(building.coalStored)}</div>`;
                     if (data.repairRange) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Repair range:</span> ${data.repairRange} tiles</div>`;
 
                     // Position info
                     html += `<div class="tooltip-stat" style="margin-top:8px;color:#666;font-size:10px">Position: (${building.x}, ${building.y})</div>`;
+                    } // Close tooltipCollapsed check
 
                     tooltip.innerHTML = html;
                     tooltip.style.display = 'block';
@@ -1213,6 +1264,11 @@
             return colors[type] || 0xffffff;
         }
 
+        function tryDeleteBuilding(x, y) {
+            if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return;
+            deleteBuilding(x, y);
+        }
+
         function tryPlaceBuilding(x, y) {
             if (!selectedBuilding) return;
             if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return;
@@ -1269,7 +1325,9 @@
                 powered: false,
                 ammo: 0,
                 width: width,
-                height: height
+                height: height,
+                buildProgress: 0,
+                isConstructing: true
             };
 
             if (isDrill) {
@@ -1348,63 +1406,60 @@
                 building.maxAmmo = 20;
             }
 
-            buildings.push(building);
-            
-            // For 2x2 buildings, create tile references that point to the master building
+            // Add to construction queue instead of directly to buildings
+            constructionQueue.push(building);
+
+            // Mark tiles as occupied immediately to prevent overlapping placements
             if (width > 1 || height > 1) {
-                building.isMaster = true;
-                building.tileX = x;
-                building.tileY = y;
-                
-                // Create tile reference objects for each tile
                 for (let dy = 0; dy < height; dy++) {
                     for (let dx = 0; dx < width; dx++) {
-                        if (dx === 0 && dy === 0) continue; // Skip top-left (master)
-                        
-                        // Create a proxy that forwards all property access to master
-                        const tileRef = new Proxy({
-                            _isTileRef: true,
-                            _master: building,
-                            _x: x + dx,
-                            _y: y + dy
-                        }, {
-                            get(target, prop) {
-                                // Special properties that belong to the tile itself
-                                if (prop === 'isTileRef') return true;
-                                if (prop === 'master') return target._master;
-                                if (prop === 'x') return target._x;
-                                if (prop === 'y') return target._y;
-                                if (prop === 'width') return 1;
-                                if (prop === 'height') return 1;
-                                // Everything else comes from master
-                                return target._master[prop];
-                            },
-                            set(target, prop, value) {
-                                // All writes go to master
-                                if (prop === 'x' || prop === 'y') {
-                                    target['_' + prop] = value;
-                                    return true;
-                                }
-                                target._master[prop] = value;
-                                return true;
-                            }
-                        });
-                        
-                        buildings.push(tileRef);
-                        map[y + dy][x + dx] = selectedBuilding;
+                        map[y + dy][x + dx] = 'constructing';
                     }
                 }
-                // Mark master position
-                map[y][x] = selectedBuilding;
             } else {
-                // Mark single tile as occupied
-                map[y][x] = selectedBuilding;
+                map[y][x] = 'constructing';
             }
-            
-            spawnParticles(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 0x44ff44, 5);
+
+            spawnParticles(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 0xffaa00, 5);
         }
 
         function deleteBuilding(x, y) {
+            // First check construction queue
+            let constructionIdx = constructionQueue.findIndex(b => {
+                const w = b.width || 1;
+                const h = b.height || 1;
+                return x >= b.x && x < b.x + w && y >= b.y && y < b.y + h;
+            });
+
+            if (constructionIdx !== -1) {
+                const b = constructionQueue[constructionIdx];
+                const data = BUILDINGS[b.type];
+                const w = b.width || 1;
+                const h = b.height || 1;
+
+                // Refund full cost for buildings under construction
+                if (data && data.cost) {
+                    for (let res in data.cost) {
+                        resources[res] += data.cost[res];
+                    }
+                    updateResourceUI();
+                }
+
+                // Remove from construction queue
+                constructionQueue.splice(constructionIdx, 1);
+
+                // Clear tiles
+                for (let dy = 0; dy < h; dy++) {
+                    for (let dx = 0; dx < w; dx++) {
+                        map[b.y + dy][b.x + dx] = 0;
+                    }
+                }
+
+                spawnParticles(b.x * TILE_SIZE + TILE_SIZE/2, b.y * TILE_SIZE + TILE_SIZE/2, 0xff4444, 5);
+                return;
+            }
+
+            // Then check completed buildings
             let idx = buildings.findIndex(b => {
                 if (b.type === 'core') return false;
                 const w = b.width || 1;
@@ -1413,24 +1468,24 @@
             });
             if (idx !== -1) {
                 let b = buildings[idx];
-                
+
                 // Resolve to master if it's a tile reference
                 if (b.isTileRef) {
                     b = b.master;
                     idx = buildings.indexOf(b);
                 }
-                
+
                 const data = BUILDINGS[b.type];
                 const w = b.width || 1;
                 const h = b.height || 1;
-                
+
                 if (data && data.cost) {
                     for (let res in data.cost) {
                         resources[res] += Math.floor(data.cost[res] * 0.5);
                     }
                     updateResourceUI();
                 }
-                
+
                 // Remove master and all tile references
                 if (b.isMaster) {
                     buildings = buildings.filter(building => {
@@ -1441,14 +1496,14 @@
                 } else {
                     buildings.splice(idx, 1);
                 }
-                
+
                 // Clear all tiles
                 for (let dy = 0; dy < h; dy++) {
                     for (let dx = 0; dx < w; dx++) {
                         map[b.y + dy][b.x + dx] = 0;
                     }
                 }
-                
+
                 spawnParticles(b.x * TILE_SIZE + TILE_SIZE/2, b.y * TILE_SIZE + TILE_SIZE/2, 0xff4444, 5);
             }
         }
@@ -1562,6 +1617,9 @@
                 if (b.type === 'repair') {
                     totalConsumption += BUILDINGS.repair.powerUse;
                 }
+                if (b.type === 'miner-constructor' && b.craftProgress > 0) {
+                    totalConsumption += 20; // 20 power when crafting
+                }
             });
 
             // Calculate power efficiency (everything runs slower when low on power)
@@ -1574,7 +1632,8 @@
                 const cy = consumer.y * TILE_SIZE + TILE_SIZE/2;
 
                 const connected = buildings.some(node => {
-                    if (node.type !== 'power-node' && node.type !== 'generator') return false;
+                    // Power nodes can connect to generators, other power nodes, and any building that produces power
+                    if (node.type !== 'power-node' && node.type !== 'generator' && node.type !== 'thermal-generator') return false;
                     const nx = node.x * TILE_SIZE + TILE_SIZE/2;
                     const ny = node.y * TILE_SIZE + TILE_SIZE/2;
                     const dist = Math.sqrt((cx - nx)**2 + (cy - ny)**2);
@@ -1585,9 +1644,83 @@
                 consumer.powerEfficiency = connected ? powerEfficiency : 0;
             });
 
+            // Construction queue - progress buildings under construction (iterate backwards to safely remove)
+            for (let i = constructionQueue.length - 1; i >= 0; i--) {
+                const building = constructionQueue[i];
+                const buildTime = BUILDINGS[building.type].buildTime || 0;
+
+                if (buildTime === 0) {
+                    // Instant build (like core or buildings without buildTime)
+                    building.isConstructing = false;
+                    building.buildProgress = buildTime;
+                } else {
+                    // Progress construction by 500ms per tick
+                    building.buildProgress += 500;
+                }
+
+                // Check if construction is complete
+                if (building.buildProgress >= buildTime) {
+                    // Remove from construction queue
+                    constructionQueue.splice(i, 1);
+                    building.isConstructing = false;
+
+                    // Add to buildings array
+                    const width = building.width || 1;
+                    const height = building.height || 1;
+
+                    buildings.push(building);
+
+                    // For 2x2 buildings, create tile references
+                    if (width > 1 || height > 1) {
+                        building.isMaster = true;
+                        building.tileX = building.x;
+                        building.tileY = building.y;
+
+                        for (let dy = 0; dy < height; dy++) {
+                            for (let dx = 0; dx < width; dx++) {
+                                if (dx === 0 && dy === 0) continue; // Skip top-left (master)
+
+                                const tileRef = new Proxy({
+                                    _isTileRef: true,
+                                    _master: building,
+                                    _x: building.x + dx,
+                                    _y: building.y + dy
+                                }, {
+                                    get(target, prop) {
+                                        if (prop === 'isTileRef') return true;
+                                        if (prop === 'master') return target._master;
+                                        if (prop === 'x') return target._x;
+                                        if (prop === 'y') return target._y;
+                                        if (prop === 'width') return 1;
+                                        if (prop === 'height') return 1;
+                                        return target._master[prop];
+                                    },
+                                    set(target, prop, value) {
+                                        if (prop === 'x' || prop === 'y') {
+                                            target['_' + prop] = value;
+                                            return true;
+                                        }
+                                        target._master[prop] = value;
+                                        return true;
+                                    }
+                                });
+
+                                buildings.push(tileRef);
+                                map[building.y + dy][building.x + dx] = building.type;
+                            }
+                        }
+                        map[building.y][building.x] = building.type;
+                    } else {
+                        map[building.y][building.x] = building.type;
+                    }
+
+                    spawnParticles(building.x * TILE_SIZE + TILE_SIZE/2, building.y * TILE_SIZE + TILE_SIZE/2, 0x44ff44, 8);
+                }
+            }
+
             // Graphite press crafting (no power required)
             buildings.filter(b => b.type === 'graphite-press').forEach(press => {
-                if (press.coalStored >= 2) {
+                if ((press.coalStored || 0) >= 2) {
                     press.craftProgress = (press.craftProgress || 0) + 500; // Progress per tick (500ms)
                     if (press.craftProgress >= BUILDINGS['graphite-press'].craftTime) {
                         press.craftProgress = 0;
@@ -1600,23 +1733,25 @@
 
             // Alloy factory crafting (slower when low power)
             buildings.filter(b => b.type === 'alloy-factory').forEach(factory => {
-                if (factory.powered && factory.leadStored >= 1 && factory.titaniumStored >= 1) {
+                if (factory.powered && (factory.leadStored || 0) >= 1 && (factory.titaniumStored || 0) >= 1) {
                     const progressRate = 500 * (factory.powerEfficiency || 0); // Slowed by power efficiency
                     factory.craftProgress = (factory.craftProgress || 0) + progressRate;
                     if (factory.craftProgress >= BUILDINGS['alloy-factory'].craftTime) {
                         factory.craftProgress = 0;
-                        factory.leadStored--;
-                        factory.titaniumStored--;
+                        factory.leadStored = (factory.leadStored || 0) - 1;
+                        factory.titaniumStored = (factory.titaniumStored || 0) - 1;
                         // Output alloy
                         outputItem(factory, 'alloy');
                     }
                 }
             });
 
-            // Miner constructor crafting (no power required)
+            // Miner constructor crafting (uses 20 power when active)
             buildings.filter(b => b.type === 'miner-constructor').forEach(constructor => {
                 if (constructor.leadStored >= 50 && constructor.titaniumStored >= 50) {
-                    constructor.craftProgress = (constructor.craftProgress || 0) + 500; // Progress per tick (500ms)
+                    // Craft speed affected by powerEfficiency, but always makes some progress (min 20%)
+                    const effectivePower = Math.max(0.2, powerEfficiency); // Minimum 20% speed even with no power
+                    constructor.craftProgress = (constructor.craftProgress || 0) + (500 * effectivePower); // Progress per tick (500ms)
                     if (constructor.craftProgress >= BUILDINGS['miner-constructor'].craftTime) {
                         constructor.craftProgress = 0;
                         constructor.leadStored -= 50;
@@ -1633,8 +1768,8 @@
 
         function spawnMiner(constructor) {
             // Determine which ore to target based on current resources
-            // Target copper if more lead, target lead if more copper
-            const targetOreType = (resources.lead || 0) > (resources.copper || 0) ? 'copper' : 'lead';
+            // Target lead if more copper, target copper if more lead
+            const targetOreType = (resources.copper || 0) > (resources.lead || 0) ? 'lead' : 'copper';
             
             // Find nearest ore of target type
             let nearestOre = null;
@@ -1727,37 +1862,35 @@
                     }
                 }
             } else {
-                // For 2x2 buildings, check all edges based on rotation
+                // For 2x2 buildings, check all edges for valid conveyors (not just rotation direction)
                 const width = building.width || 1;
                 const height = building.height || 1;
-                const dir = getDirection(building.rotation);
-                
-                // Generate all possible output positions based on size and rotation
+
+                // Generate all possible output positions on all edges
                 const outputPositions = [];
                 if (width === 2 && height === 2) {
-                    // For 2x2, check the entire edge in the output direction
-                    if (dir.x > 0) {
-                        outputPositions.push({ x: building.x + 2, y: building.y });
-                        outputPositions.push({ x: building.x + 2, y: building.y + 1 });
-                    } else if (dir.x < 0) {
-                        outputPositions.push({ x: building.x - 1, y: building.y });
-                        outputPositions.push({ x: building.x - 1, y: building.y + 1 });
-                    } else if (dir.y > 0) {
-                        outputPositions.push({ x: building.x, y: building.y + 2 });
-                        outputPositions.push({ x: building.x + 1, y: building.y + 2 });
-                    } else if (dir.y < 0) {
-                        outputPositions.push({ x: building.x, y: building.y - 1 });
-                        outputPositions.push({ x: building.x + 1, y: building.y - 1 });
-                    }
+                    // Right edge
+                    outputPositions.push({ x: building.x + 2, y: building.y });
+                    outputPositions.push({ x: building.x + 2, y: building.y + 1 });
+                    // Left edge
+                    outputPositions.push({ x: building.x - 1, y: building.y });
+                    outputPositions.push({ x: building.x - 1, y: building.y + 1 });
+                    // Bottom edge
+                    outputPositions.push({ x: building.x, y: building.y + 2 });
+                    outputPositions.push({ x: building.x + 1, y: building.y + 2 });
+                    // Top edge
+                    outputPositions.push({ x: building.x, y: building.y - 1 });
+                    outputPositions.push({ x: building.x + 1, y: building.y - 1 });
                 } else {
-                    // For 1x1, single output position
+                    // For 1x1, use rotation direction
+                    const dir = getDirection(building.rotation);
                     outputPositions.push({ x: building.x + dir.x, y: building.y + dir.y });
                 }
-                
+
                 // Try each output position
                 for (const pos of outputPositions) {
                     if (pos.x < 0 || pos.x >= MAP_WIDTH || pos.y < 0 || pos.y >= MAP_HEIGHT) continue;
-                    
+
                     const target = buildings.find(t => {
                         // Check exact tile match
                         if (t.x === pos.x && t.y === pos.y) return true;
@@ -1795,19 +1928,19 @@
                     return true;
                 }
             } else if (target.type === 'graphite-press' && itemType === 'coal') {
-                if (target.coalStored < 2) {
-                    target.coalStored++;
+                if ((target.coalStored || 0) < 10) { // Allow storing more coal
+                    target.coalStored = (target.coalStored || 0) + 1;
                     spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
                 }
             } else if (target.type === 'alloy-factory') {
                 // Alloy factory accepts lead and titanium
-                if (itemType === 'lead' && target.leadStored < 10) {
-                    target.leadStored++;
+                if (itemType === 'lead' && (target.leadStored || 0) < 10) {
+                    target.leadStored = (target.leadStored || 0) + 1;
                     spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
-                } else if (itemType === 'titanium' && target.titaniumStored < 10) {
-                    target.titaniumStored++;
+                } else if (itemType === 'titanium' && (target.titaniumStored || 0) < 10) {
+                    target.titaniumStored = (target.titaniumStored || 0) + 1;
                     spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
                 }
@@ -1828,7 +1961,7 @@
                     const conveyorOutputDir = getDirection(target.rotation);
                     const conveyorOutputX = target.x + conveyorOutputDir.x;
                     const conveyorOutputY = target.y + conveyorOutputDir.y;
-                    
+
                     // Check if the conveyor is outputting towards the source building
                     const bw = building.width || 1;
                     const bh = building.height || 1;
@@ -1838,17 +1971,28 @@
                         return false; // Can't output to a conveyor facing us
                     }
                 }
-                
+
                 // Items now use world coordinates for smooth movement
-                const startWorldX = building.x * TILE_SIZE + TILE_SIZE / 2;
-                const startWorldY = building.y * TILE_SIZE + TILE_SIZE / 2;
+                // For 2x2 buildings, use the center of the entire building, not just top-left
+                const bw = building.width || 1;
+                const bh = building.height || 1;
+                const startWorldX = (building.x + bw / 2) * TILE_SIZE;
+                const startWorldY = (building.y + bh / 2) * TILE_SIZE;
+
+                // Calculate fromDir based on where the item exits the building
+                let fromDir = -1;
+                if (outX < building.x) fromDir = 2; // Exiting left, came from right
+                else if (outX >= building.x + bw) fromDir = 0; // Exiting right, came from left
+                else if (outY < building.y) fromDir = 3; // Exiting up, came from down
+                else if (outY >= building.y + bh) fromDir = 1; // Exiting down, came from up
+
                 items.push({
                     type: itemType,
                     worldX: startWorldX,
                     worldY: startWorldY,
                     targetTileX: outX,
                     targetTileY: outY,
-                    fromDir: -1 // No specific from direction for drills
+                    fromDir: fromDir
                 });
                 return true;
             } else if ((target.type === 'turret' || target.type === 'scatter') &&
@@ -1878,6 +2022,19 @@
                 spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
                 toRemove.push(idx);
                 return true;
+            } else if (target.type === 'thermal-generator') {
+                // Thermal generator accepts coal and lead
+                if (item.type === 'coal' && target.coalStored < 10) {
+                    target.coalStored = (target.coalStored || 0) + 1;
+                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                    toRemove.push(idx);
+                    return true;
+                } else if (item.type === 'lead' && target.leadStored < 10) {
+                    target.leadStored = (target.leadStored || 0) + 1;
+                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                    toRemove.push(idx);
+                    return true;
+                }
             } else if (target.type === 'graphite-press' && item.type === 'coal') {
                 if (target.coalStored < 2) {
                     target.coalStored++;
@@ -1986,10 +2143,22 @@
                         const nextY = item.targetTileY + d.y;
 
                         if (nextX >= 0 && nextX < MAP_WIDTH && nextY >= 0 && nextY < MAP_HEIGHT) {
-                            const target = buildings.find(b =>
-                                b.x === nextX && b.y === nextY ||
-                                (b.type === 'core' && nextX >= b.x && nextX < b.x + 2 && nextY >= b.y && nextY < b.y + 2)
-                            );
+                            let target = buildings.find(b => {
+                                // Check exact tile match
+                                if (b.x === nextX && b.y === nextY) return true;
+                                // Check 2x2 buildings
+                                const w = b.width || 1;
+                                const h = b.height || 1;
+                                if (w > 1 || h > 1) {
+                                    return nextX >= b.x && nextX < b.x + w && nextY >= b.y && nextY < b.y + h;
+                                }
+                                return false;
+                            });
+
+                            // Resolve tile reference to master
+                            if (target && target.isTileRef) {
+                                target = target.master;
+                            }
 
                             if (target) {
                                 moved = handleItemTarget(item, target, nextX, nextY, dir, targetWorldX, targetWorldY, toRemove, idx);
@@ -2070,13 +2239,18 @@
                                 }
                                 // Output to conveyor ONLY if it's facing away from the router
                                 else if (target.type === 'conveyor' || target.type === 'alloy-conveyor') {
-                                    // Conveyor's rotation determines input direction
                                     // A conveyor accepts input from behind (opposite of its output direction)
+                                    // Router outputs in dirIdx direction, conveyor at (nextX, nextY)
+                                    // Check: is the router outputting from the direction that the conveyor accepts input from?
                                     const conveyorOutputDir = target.rotation;
-                                    const conveyorInputDir = (conveyorOutputDir + 2) % 4; // Opposite direction
-                                    
-                                    // Check if router's output direction matches conveyor's input direction
-                                    if (dirIdx === conveyorInputDir) {
+                                    const routerToConveyor = dirIdx; // Direction from router to conveyor
+                                    const conveyorToRouter = (routerToConveyor + 2) % 4; // Direction from conveyor back to router
+
+                                    // Conveyor accepts input from behind, which is opposite its output direction
+                                    const conveyorInputDir = (conveyorOutputDir + 2) % 4;
+
+                                    // Check if conveyor's input direction matches where the router is
+                                    if (conveyorToRouter === conveyorInputDir) {
                                         isValidTarget = true;
                                     }
                                 }
@@ -2113,10 +2287,22 @@
                         const nextY = item.targetTileY + d.y;
 
                         if (nextX >= 0 && nextX < MAP_WIDTH && nextY >= 0 && nextY < MAP_HEIGHT) {
-                            const target = buildings.find(b =>
-                                b.x === nextX && b.y === nextY ||
-                                (b.type === 'core' && nextX >= b.x && nextX < b.x + 2 && nextY >= b.y && nextY < b.y + 2)
-                            );
+                            let target = buildings.find(b => {
+                                // Check exact tile match
+                                if (b.x === nextX && b.y === nextY) return true;
+                                // Check 2x2 buildings
+                                const w = b.width || 1;
+                                const h = b.height || 1;
+                                if (w > 1 || h > 1) {
+                                    return nextX >= b.x && nextX < b.x + w && nextY >= b.y && nextY < b.y + h;
+                                }
+                                return false;
+                            });
+
+                            // Resolve tile reference to master
+                            if (target && target.isTileRef) {
+                                target = target.master;
+                            }
 
                             if (target) {
                                 moved = handleItemTarget(item, target, nextX, nextY, dir, targetWorldX, targetWorldY, toRemove, idx);
@@ -2133,9 +2319,9 @@
                 items.splice(toRemove[i], 1);
             }
             
-            // Hard limit on items for performance
-            if (items.length > 150) {
-                items.splice(0, items.length - 150);
+            // Hard limit on items for performance - increased to prevent items disappearing
+            if (items.length > 1000) {
+                items.splice(0, items.length - 1000);
             }
         }
 
@@ -2177,34 +2363,50 @@
         }
 
         function manualMine() {
-            if (player.respawnTimer > 0) return;
+            if (player.respawnTimer > 0) {
+                miningTarget = null;
+                return;
+            }
 
-            // Check tiles around player
+            // Find nearest ore node within range
             const playerTileX = Math.floor(player.x / TILE_SIZE);
             const playerTileY = Math.floor(player.y / TILE_SIZE);
+            const mineRange = 3; // Can mine ore within 3 tiles
 
-            for (let dy = -1; dy <= 1; dy++) {
-                for (let dx = -1; dx <= 1; dx++) {
+            let nearestOre = null;
+            let nearestDist = Infinity;
+
+            for (let dy = -mineRange; dy <= mineRange; dy++) {
+                for (let dx = -mineRange; dx <= mineRange; dx++) {
                     const checkX = playerTileX + dx;
                     const checkY = playerTileY + dy;
 
                     if (checkX >= 0 && checkX < MAP_WIDTH && checkY >= 0 && checkY < MAP_HEIGHT) {
                         const ore = oreMap[checkY][checkX];
-                        
+
                         // Can only manually mine copper and lead
                         if (ore === 'copper' || ore === 'lead') {
-                            resources[ore] = (resources[ore] || 0) + 3; // Mine 3 at a time for faster gathering
-                            updateResourceUI();
-                            
-                            // Visual feedback
-                            const mineX = checkX * TILE_SIZE + TILE_SIZE / 2;
-                            const mineY = checkY * TILE_SIZE + TILE_SIZE / 2;
-                            spawnParticles(mineX, mineY, getOreColor(ore), 5);
-                            
-                            return; // Only mine one tile per press
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            if (dist < nearestDist) {
+                                nearestDist = dist;
+                                nearestOre = {
+                                    x: checkX * TILE_SIZE + TILE_SIZE / 2,
+                                    y: checkY * TILE_SIZE + TILE_SIZE / 2,
+                                    type: ore
+                                };
+                            }
                         }
                     }
                 }
+            }
+
+            if (nearestOre) {
+                miningTarget = nearestOre;
+                resources[nearestOre.type] = (resources[nearestOre.type] || 0) + 1; // Mine 1 ore per 200ms
+                updateResourceUI();
+                spawnParticles(nearestOre.x, nearestOre.y, getOreColor(nearestOre.type), 3);
+            } else {
+                miningTarget = null;
             }
         }
 
@@ -2240,14 +2442,14 @@
                 if (wave >= 15 && roll < 0.05) enemyType = 'boss';
 
                 const stats = {
-                    basic: { health: 40 + wave * 5, speed: 0.9, size: 12, color: 0xff5555, damage: 2, canShoot: true, range: 5, fireCooldown: 500, bulletSpeed: 8 },
-                    fast: { health: 20 + wave * 3, speed: 1.8, size: 10, color: 0xffaa00, damage: 2, canShoot: true, range: 4, fireCooldown: 500, bulletSpeed: 10 },
-                    shooter: { health: 30 + wave * 4, speed: 0.7, size: 11, color: 0xff8844, damage: 3, canShoot: true, range: 6, fireCooldown: 500, bulletSpeed: 9 },
-                    sniper: { health: 25 + wave * 3, speed: 0.5, size: 10, color: 0x8844ff, damage: 4, canShoot: true, range: 10, fireCooldown: 500, bulletSpeed: 12 },
-                    artillery: { health: 60 + wave * 6, speed: 0.3, size: 16, color: 0x448844, damage: 5, canShoot: true, range: 12, fireCooldown: 500, bulletSpeed: 7, splash: true },
-                    tank: { health: 100 + wave * 12, speed: 0.35, size: 18, color: 0x884444, damage: 4, canShoot: true, range: 4, fireCooldown: 500, bulletSpeed: 9 },
-                    swarm: { health: 15 + wave * 2, speed: 2.2, size: 8, color: 0xff88ff, damage: 2, canShoot: true, range: 3, fireCooldown: 500, bulletSpeed: 11 },
-                    boss: { health: 300 + wave * 25, speed: 0.25, size: 26, color: 0xff0000, damage: 5, canShoot: true, range: 8, fireCooldown: 500, bulletSpeed: 10 }
+                    basic: { health: 40 + wave * 5, speed: 0.9, size: 12, color: 0xff5555, damage: 2, canShoot: true, range: 5, fireCooldown: 500, bulletSpeed: 8, useLaser: false },
+                    fast: { health: 20 + wave * 3, speed: 1.8, size: 10, color: 0xffaa00, damage: 30, canShoot: false, isKamikaze: true, explosionRange: 1.5, useLaser: false },
+                    shooter: { health: 30 + wave * 4, speed: 0.7, size: 11, color: 0xff8844, damage: 3, canShoot: true, range: 6, fireCooldown: 500, bulletSpeed: 9, useLaser: false },
+                    sniper: { health: 25 + wave * 3, speed: 0.5, size: 10, color: 0x8844ff, damage: 4, canShoot: true, range: 10, fireCooldown: 1500, bulletSpeed: 12, useLaser: true, laserColor: 0x8844ff },
+                    artillery: { health: 60 + wave * 6, speed: 0.3, size: 16, color: 0x448844, damage: 5, canShoot: true, range: 12, fireCooldown: 500, bulletSpeed: 7, splash: true, useLaser: false },
+                    tank: { health: 100 + wave * 12, speed: 0.35, size: 18, color: 0x884444, damage: 4, canShoot: true, range: 6, fireCooldown: 1000, bulletSpeed: 9, useLaser: true, laserColor: 0xff4444 },
+                    swarm: { health: 15 + wave * 2, speed: 2.2, size: 8, color: 0xff88ff, damage: 20, canShoot: false, isKamikaze: true, explosionRange: 1, useLaser: false },
+                    boss: { health: 300 + wave * 25, speed: 0.25, size: 26, color: 0xff0000, damage: 6, canShoot: true, range: 9, fireCooldown: 800, bulletSpeed: 10, useLaser: true, laserColor: 0xff0000 }
                 }[enemyType];
 
                 enemies.push({
@@ -2261,7 +2463,11 @@
                     lastFire: 0,
                     bulletSpeed: stats.bulletSpeed || 4,
                     splash: stats.splash || false,
-                    targetBuilding: null
+                    useLaser: stats.useLaser || false,
+                    laserColor: stats.laserColor || 0xff0000,
+                    targetBuilding: null,
+                    laserActive: false, // Track if laser is currently firing
+                    laserTarget: null // Store laser target position
                 });
             }
         }
@@ -2370,10 +2576,22 @@
 
             // Player movement (only if alive)
             if (player.respawnTimer <= 0) {
-                if (keys.W.isDown) player.y -= player.speed;
-                if (keys.S.isDown) player.y += player.speed;
-                if (keys.A.isDown) player.x -= player.speed;
-                if (keys.D.isDown) player.x += player.speed;
+                let moveX = 0;
+                let moveY = 0;
+
+                if (keys.W.isDown) moveY -= player.speed;
+                if (keys.S.isDown) moveY += player.speed;
+                if (keys.A.isDown) moveX -= player.speed;
+                if (keys.D.isDown) moveX += player.speed;
+
+                // Update position
+                player.x += moveX;
+                player.y += moveY;
+
+                // Update angle based on movement direction
+                if (moveX !== 0 || moveY !== 0) {
+                    player.angle = Math.atan2(moveY, moveX);
+                }
 
                 // Clamp player to map bounds
                 player.x = Math.max(TILE_SIZE, Math.min(MAP_WIDTH * TILE_SIZE - TILE_SIZE, player.x));
@@ -2477,11 +2695,43 @@
             graphics.lineStyle(2, 0xff0000, pulse);
             graphics.strokeCircle(spawnScreenX + TILE_SIZE/2, spawnScreenY + TILE_SIZE/2, TILE_SIZE * 1.5);
 
+            // Draw construction queue (semi-transparent ghosts)
+            constructionQueue.forEach(b => {
+                const screenX = b.x * TILE_SIZE - camera.x;
+                const screenY = b.y * TILE_SIZE - camera.y;
+                const width = (b.width || 1) * TILE_SIZE;
+                const height = (b.height || 1) * TILE_SIZE;
+
+                // Only draw if on screen
+                if (screenX > -TILE_SIZE * 2 && screenX < window.innerWidth + TILE_SIZE &&
+                    screenY > -TILE_SIZE * 2 && screenY < window.innerHeight + TILE_SIZE) {
+
+                    const buildTime = BUILDINGS[b.type].buildTime || 1;
+                    const progress = Math.min(1, b.buildProgress / buildTime);
+
+                    // Semi-transparent white/blue tint for ghost
+                    graphics.fillStyle(0x88ccff, 0.3);
+                    graphics.fillRect(screenX, screenY, width, height);
+
+                    // Border
+                    graphics.lineStyle(2, 0x88ccff, 0.6);
+                    graphics.strokeRect(screenX, screenY, width, height);
+
+                    // Progress bar
+                    const barHeight = 4;
+                    const barY = screenY + height + 4;
+                    graphics.fillStyle(0x333333, 0.8);
+                    graphics.fillRect(screenX, barY, width, barHeight);
+                    graphics.fillStyle(0x44ff44, 0.9);
+                    graphics.fillRect(screenX, barY, width * progress, barHeight);
+                }
+            });
+
             // Draw buildings
             buildings.forEach(b => {
                 // Skip tile references - only draw master buildings
                 if (b.isTileRef) return;
-                
+
                 const screenX = b.x * TILE_SIZE - camera.x;
                 const screenY = b.y * TILE_SIZE - camera.y;
 
@@ -2501,24 +2751,49 @@
                 const targetWorldX = miner.targetX * TILE_SIZE + TILE_SIZE / 2;
                 const targetWorldY = miner.targetY * TILE_SIZE + TILE_SIZE / 2;
                 
-                // Move towards target
+                // Move towards target but stop at a distance to show laser better
                 const dx = targetWorldX - miner.x;
                 const dy = targetWorldY - miner.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist > 5) {
+                const miningDistance = TILE_SIZE * 1.5; // Stop 1.5 tiles away
+
+                if (dist > miningDistance) {
                     // Move towards ore
                     const speed = 2;
-                    miner.x += (dx / dist) * speed;
-                    miner.y += (dy / dist) * speed;
+                    let newX = miner.x + (dx / dist) * speed;
+                    let newY = miner.y + (dy / dist) * speed;
+
+                    // Check collision with other miners
+                    const minerRadius = 12; // Collision radius for miners
+                    let collided = false;
+                    for (let j = 0; j < miners.length; j++) {
+                        if (i === j) continue;
+                        const other = miners[j];
+                        const odx = newX - other.x;
+                        const ody = newY - other.y;
+                        const oDist = Math.sqrt(odx * odx + ody * ody);
+
+                        if (oDist < minerRadius * 2) {
+                            // Collision detected - push away slightly
+                            collided = true;
+                            const pushDist = (minerRadius * 2 - oDist) / 2;
+                            if (oDist > 0) {
+                                newX += (odx / oDist) * pushDist;
+                                newY += (ody / oDist) * pushDist;
+                            }
+                        }
+                    }
+
+                    miner.x = newX;
+                    miner.y = newY;
                 } else {
-                    // At ore - mine it
+                    // At mining distance - mine it
                     miner.miningCooldown -= delta;
                     if (miner.miningCooldown <= 0) {
                         miner.miningCooldown = 1000; // Mine every 1 second
                         resources[miner.oreType] = (resources[miner.oreType] || 0) + 1;
                         updateResourceUI();
-                        spawnParticles(miner.x, miner.y, getOreColor(miner.oreType), 2);
+                        spawnParticles(targetWorldX, targetWorldY, getOreColor(miner.oreType), 2);
                     }
                 }
                 
@@ -2559,19 +2834,51 @@
             miners.forEach(miner => {
                 const screenX = miner.x - camera.x;
                 const screenY = miner.y - camera.y;
-                
+
                 if (screenX > -20 && screenX < window.innerWidth + 20 &&
                     screenY > -20 && screenY < window.innerHeight + 20) {
+
+                    // Draw green mining laser if miner is at mining distance
+                    const targetWorldX = miner.targetX * TILE_SIZE + TILE_SIZE / 2;
+                    const targetWorldY = miner.targetY * TILE_SIZE + TILE_SIZE / 2;
+                    const distToTarget = Math.sqrt((miner.x - targetWorldX)**2 + (miner.y - targetWorldY)**2);
+                    const miningDistance = TILE_SIZE * 1.5;
+
+                    if (distToTarget <= miningDistance) {
+                        // Miner is at target, draw green laser (wider and brighter)
+                        const targetScreenX = targetWorldX - camera.x;
+                        const targetScreenY = targetWorldY - camera.y;
+                        const laserPulse = Math.sin(Date.now() / 80) * 0.3 + 0.7;
+
+                        // Outer glow (green) - wider
+                        graphics.lineStyle(12, 0x00ff00, laserPulse * 0.3);
+                        graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+
+                        // Middle glow - brighter
+                        graphics.lineStyle(6, 0x44ff44, laserPulse * 0.7);
+                        graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+
+                        // Core beam - very bright
+                        graphics.lineStyle(3, 0xccffcc, laserPulse * 0.95);
+                        graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+
+                        // Impact effect at target - larger and brighter
+                        graphics.fillStyle(0x00ff00, laserPulse * 0.7);
+                        graphics.fillCircle(targetScreenX, targetScreenY, 10);
+                        graphics.fillStyle(0xffffff, laserPulse * 0.6);
+                        graphics.fillCircle(targetScreenX, targetScreenY, 5);
+                    }
+
                     // Miner body (small drone)
                     graphics.fillStyle(0x4CAF50);
                     graphics.fillCircle(screenX, screenY, 8);
-                    
+
                     // Propellers
                     const propAngle = (Date.now() / 50) % (Math.PI * 2);
                     graphics.lineStyle(2, 0x888888);
                     graphics.strokeCircle(screenX - 6, screenY - 6, 3);
                     graphics.strokeCircle(screenX + 6, screenY - 6, 3);
-                    
+
                     // Health bar
                     const healthPct = miner.health / miner.maxHealth;
                     graphics.fillStyle(0x333333);
@@ -2647,19 +2954,56 @@
                 const dy = targetY - enemy.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
                 
-                // Attack anything in the way (within 1 tile)
+                // Attack anything in the way (within 1 tile) - or explode if kamikaze
                 buildings.forEach(b => {
                     if (b.isTileRef) return;
                     const bx = b.x * TILE_SIZE + TILE_SIZE/2;
                     const by = b.y * TILE_SIZE + TILE_SIZE/2;
                     const distToBuilding = Math.sqrt((enemy.x - bx)**2 + (enemy.y - by)**2);
-                    
-                    // If building is in the way (within 1.5 tiles) and between enemy and target
-                    if (distToBuilding < TILE_SIZE * 1.5) {
+
+                    // Kamikaze enemies explode on contact with buildings
+                    if (enemy.isKamikaze && distToBuilding < TILE_SIZE * 0.8) {
+                        // Deal damage to building
+                        b.health -= enemy.damage;
+
+                        // Damage nearby buildings in explosion range
+                        const expRange = (enemy.explosionRange || 1) * TILE_SIZE;
+                        buildings.forEach(nearbyB => {
+                            if (nearbyB.isTileRef) return;
+                            const nbx = nearbyB.x * TILE_SIZE + TILE_SIZE/2;
+                            const nby = nearbyB.y * TILE_SIZE + TILE_SIZE/2;
+                            const distToNearby = Math.sqrt((enemy.x - nbx)**2 + (enemy.y - nby)**2);
+                            if (distToNearby < expRange && nearbyB !== b) {
+                                const falloff = 1 - (distToNearby / expRange);
+                                nearbyB.health -= enemy.damage * falloff * 0.5;
+                            }
+                        });
+
+                        // Explosion particles
+                        for (let i = 0; i < 10; i++) {
+                            const angle = Math.random() * Math.PI * 2;
+                            const speed = Math.random() * 4 + 2;
+                            particles.push({
+                                x: enemy.x,
+                                y: enemy.y,
+                                vx: Math.cos(angle) * speed,
+                                vy: Math.sin(angle) * speed,
+                                color: 0xff6600,
+                                life: Math.random() * 20 + 10
+                            });
+                        }
+
+                        // Kill the kamikaze enemy
+                        enemy.health = 0;
+                        return;
+                    }
+
+                    // Regular enemies - if building is in the way (within 1.5 tiles) and between enemy and target
+                    if (!enemy.isKamikaze && distToBuilding < TILE_SIZE * 1.5) {
                         const angleToTarget = Math.atan2(dy, dx);
                         const angleToBuilding = Math.atan2(by - enemy.y, bx - enemy.x);
                         const angleDiff = Math.abs(angleToTarget - angleToBuilding);
-                        
+
                         if (angleDiff < Math.PI / 4 || angleDiff > 7 * Math.PI / 4) {
                             // Building is roughly in direction of target - attack it
                             b.health -= 0.5; // Damage buildings in the way
@@ -2689,40 +3033,92 @@
                 if (enemy.canShoot && enemy.fireCooldownMax) {
                     enemy.lastFire = (enemy.lastFire || 0) + delta;
 
-                    if (enemy.lastFire >= enemy.fireCooldownMax) {
-                        // Shoot at player if in range (only if player is alive)
+                    if (enemy.useLaser) {
+                        // Laser enemies fire with cooldown
                         const playerDist = Math.sqrt((player.x - enemy.x)**2 + (player.y - enemy.y)**2);
 
                         if (player.respawnTimer <= 0 && playerDist < enemy.range * TILE_SIZE) {
-                            enemyBullets.push({
-                                x: enemy.x,
-                                y: enemy.y,
-                                startX: enemy.x,
-                                startY: enemy.y,
-                                targetX: player.x,
-                                targetY: player.y,
-                                speed: enemy.bulletSpeed || 4,
-                                damage: enemy.damage * 5,
-                                splash: enemy.splash,
-                                enemyType: enemy.type
-                            });
-                            enemy.lastFire = 0;
+                            // Only activate laser when cooldown is ready
+                            if (enemy.lastFire >= enemy.fireCooldownMax) {
+                                enemy.laserActive = true;
+                                enemy.laserTarget = { x: player.x, y: player.y, isPlayer: true };
+                                enemy.laserStartTime = Date.now();
+                                enemy.lastFire = 0;
+                            }
+
+                            // Laser stays active for 300ms then turns off
+                            if (enemy.laserActive && enemy.laserStartTime && Date.now() - enemy.laserStartTime > 300) {
+                                enemy.laserActive = false;
+                                enemy.laserTarget = null;
+                            }
+
+                            // Deal damage when laser is active
+                            if (enemy.laserActive) {
+                                player.health -= enemy.damage * 0.1; // Per frame damage while active
+                                if (player.health <= 0 && player.respawnTimer <= 0) {
+                                    respawnPlayer();
+                                }
+                            }
                         } else if (targetBuilding && dist < enemy.range * TILE_SIZE) {
-                            // Shoot at building from range
-                            enemyBullets.push({
-                                x: enemy.x,
-                                y: enemy.y,
-                                startX: enemy.x,
-                                startY: enemy.y,
-                                targetX: targetX,
-                                targetY: targetY,
-                                speed: enemy.bulletSpeed || 4,
-                                damage: enemy.damage * 3,
-                                targetBuilding: targetBuilding,
-                                splash: enemy.splash,
-                                enemyType: enemy.type
-                            });
-                            enemy.lastFire = 0;
+                            // Only activate laser when cooldown is ready
+                            if (enemy.lastFire >= enemy.fireCooldownMax) {
+                                enemy.laserActive = true;
+                                enemy.laserTarget = { x: targetX, y: targetY, building: targetBuilding };
+                                enemy.laserStartTime = Date.now();
+                                enemy.lastFire = 0;
+                            }
+
+                            // Laser stays active for 300ms then turns off
+                            if (enemy.laserActive && enemy.laserStartTime && Date.now() - enemy.laserStartTime > 300) {
+                                enemy.laserActive = false;
+                                enemy.laserTarget = null;
+                            }
+
+                            // Deal damage to building when laser is active
+                            if (enemy.laserActive && targetBuilding) {
+                                targetBuilding.health -= enemy.damage * 0.05;
+                            }
+                        } else {
+                            enemy.laserActive = false;
+                            enemy.laserTarget = null;
+                        }
+                    } else {
+                        // Regular bullet enemies
+                        if (enemy.lastFire >= enemy.fireCooldownMax) {
+                            // Shoot at player if in range (only if player is alive)
+                            const playerDist = Math.sqrt((player.x - enemy.x)**2 + (player.y - enemy.y)**2);
+
+                            if (player.respawnTimer <= 0 && playerDist < enemy.range * TILE_SIZE) {
+                                enemyBullets.push({
+                                    x: enemy.x,
+                                    y: enemy.y,
+                                    startX: enemy.x,
+                                    startY: enemy.y,
+                                    targetX: player.x,
+                                    targetY: player.y,
+                                    speed: enemy.bulletSpeed || 4,
+                                    damage: enemy.damage * 5,
+                                    splash: enemy.splash,
+                                    enemyType: enemy.type
+                                });
+                                enemy.lastFire = 0;
+                            } else if (targetBuilding && dist < enemy.range * TILE_SIZE) {
+                                // Shoot at building from range
+                                enemyBullets.push({
+                                    x: enemy.x,
+                                    y: enemy.y,
+                                    startX: enemy.x,
+                                    startY: enemy.y,
+                                    targetX: targetX,
+                                    targetY: targetY,
+                                    speed: enemy.bulletSpeed || 4,
+                                    damage: enemy.damage * 3,
+                                    targetBuilding: targetBuilding,
+                                    splash: enemy.splash,
+                                    enemyType: enemy.type
+                                });
+                                enemy.lastFire = 0;
+                            }
                         }
                     }
                 }
@@ -2941,6 +3337,33 @@
                         graphics.fillRect(screenX - enemy.size, screenY - enemy.size - 8, enemy.size * 2, 4);
                         graphics.fillStyle(healthPct > 0.5 ? 0x44ff44 : (healthPct > 0.25 ? 0xffff00 : 0xff4444));
                         graphics.fillRect(screenX - enemy.size, screenY - enemy.size - 8, enemy.size * 2 * healthPct, 4);
+                    }
+
+                    // Draw laser beam if active
+                    if (enemy.laserActive && enemy.laserTarget) {
+                        const targetScreenX = enemy.laserTarget.x - camera.x;
+                        const targetScreenY = enemy.laserTarget.y - camera.y;
+                        const laserPulse = Math.sin(Date.now() / 60) * 0.3 + 0.7;
+                        const color = enemy.laserColor || 0xff0000;
+
+                        // Outer glow - wider for bigger enemies
+                        const glowWidth = enemy.size > 20 ? 18 : (enemy.size > 15 ? 14 : 10);
+                        graphics.lineStyle(glowWidth, color, laserPulse * 0.25);
+                        graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+
+                        // Middle glow
+                        graphics.lineStyle(glowWidth * 0.5, color, laserPulse * 0.6);
+                        graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+
+                        // Core beam - very bright
+                        graphics.lineStyle(glowWidth * 0.25, 0xffffff, laserPulse * 0.95);
+                        graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+
+                        // Impact effect at target
+                        graphics.fillStyle(color, laserPulse * 0.7);
+                        graphics.fillCircle(targetScreenX, targetScreenY, 14);
+                        graphics.fillStyle(0xffffff, laserPulse * 0.5);
+                        graphics.fillCircle(targetScreenX, targetScreenY, 7);
                     }
                 }
             });
@@ -3288,8 +3711,8 @@
             }
             
             // Limit total particle count for performance
-            if (particles.length > 100) {
-                particles.splice(0, particles.length - 100);
+            if (particles.length > 1000) {
+                particles.splice(0, particles.length - 1000);
             }
 
             // Draw player ship
@@ -3336,7 +3759,7 @@
                     graphics.fillRect(screenX, screenY, TILE_SIZE * width, TILE_SIZE * height);
 
                     // Draw direction arrow in center for rotatable buildings
-                    if (isDrill || selectedBuilding === 'conveyor' || selectedBuilding === 'alloy-conveyor' || selectedBuilding === 'graphite-press' || selectedBuilding === 'alloy-factory' || selectedBuilding === 'thermal-generator') {
+                    if (isDrill || selectedBuilding === 'conveyor' || selectedBuilding === 'alloy-conveyor' || selectedBuilding === 'graphite-press' || selectedBuilding === 'alloy-factory' || selectedBuilding === 'thermal-generator' || selectedBuilding === 'payload-conveyor') {
                         const centerX = screenX + (TILE_SIZE * width) / 2;
                         const centerY = screenY + (TILE_SIZE * height) / 2;
                         drawArrow(centerX, centerY, rotation, 0xffffff);
@@ -3394,101 +3817,98 @@
                 graphics.strokeCircle(screenX, screenY, 25);
             }
 
-            // Shadow
-            graphics.fillStyle(0x000000, 0.4);
-            graphics.fillEllipse(screenX + 3, screenY + 15, 20, 10);
+            // Save graphics state and rotate
+            graphics.save();
+            graphics.translate(screenX, screenY);
+            graphics.rotate(player.angle);
 
-            // Main hull - sleek fighter design
-            graphics.fillStyle(0x3366aa);
+            // Shadow (slightly offset)
+            graphics.fillStyle(0x000000, 0.3);
+            graphics.fillEllipse(2, 3, 16, 10);
+
+            // Industrial ship body - rectangular with angled front
+            // Main hull body
+            graphics.fillStyle(0x555566);
+            graphics.fillRect(-10, -8, 20, 16);
+
+            // Front angled section
+            graphics.fillStyle(0x666677);
             graphics.beginPath();
-            // Nose
-            graphics.moveTo(screenX, screenY - 22);
-            // Right side
-            graphics.lineTo(screenX + 8, screenY - 8);
-            graphics.lineTo(screenX + 14, screenY + 4);
-            graphics.lineTo(screenX + 16, screenY + 10);
-            // Right wing
-            graphics.lineTo(screenX + 20, screenY + 8);
-            graphics.lineTo(screenX + 18, screenY + 14);
-            graphics.lineTo(screenX + 8, screenY + 12);
-            // Back
-            graphics.lineTo(screenX + 6, screenY + 16);
-            graphics.lineTo(screenX - 6, screenY + 16);
-            // Left wing
-            graphics.lineTo(screenX - 8, screenY + 12);
-            graphics.lineTo(screenX - 18, screenY + 14);
-            graphics.lineTo(screenX - 20, screenY + 8);
-            // Left side
-            graphics.lineTo(screenX - 16, screenY + 10);
-            graphics.lineTo(screenX - 14, screenY + 4);
-            graphics.lineTo(screenX - 8, screenY - 8);
+            graphics.moveTo(10, -8);  // right top
+            graphics.lineTo(16, -4);  // nose right
+            graphics.lineTo(16, 4);   // nose left
+            graphics.lineTo(10, 8);   // left bottom
             graphics.closePath();
             graphics.fillPath();
 
-            // Hull highlight
-            graphics.fillStyle(0x5588cc);
-            graphics.beginPath();
-            graphics.moveTo(screenX, screenY - 18);
-            graphics.lineTo(screenX + 6, screenY - 6);
-            graphics.lineTo(screenX + 10, screenY + 4);
-            graphics.lineTo(screenX, screenY + 8);
-            graphics.lineTo(screenX - 10, screenY + 4);
-            graphics.lineTo(screenX - 6, screenY - 6);
-            graphics.closePath();
-            graphics.fillPath();
+            // Dark panel lines for industrial look
+            graphics.lineStyle(1, 0x333344);
+            graphics.lineBetween(-10, -3, 10, -3);
+            graphics.lineBetween(-10, 3, 10, 3);
+            graphics.lineBetween(0, -8, 0, 8);
 
-            // Cockpit glass
-            const cockpitGlow = Math.sin(Date.now() / 100) * 0.1 + 0.9;
-            graphics.fillStyle(0x88ddff, cockpitGlow);
-            graphics.fillEllipse(screenX, screenY - 6, 4, 7);
+            // Cockpit window (small and boxy)
+            graphics.fillStyle(0x447788, 0.8);
+            graphics.fillRect(6, -3, 6, 6);
+            graphics.lineStyle(1, 0x223344);
+            graphics.strokeRect(6, -3, 6, 6);
 
-            // Cockpit frame
-            graphics.lineStyle(1, 0x224466);
-            graphics.strokeEllipse(screenX, screenY - 6, 4, 7);
-
-            // Wing stripes
-            graphics.fillStyle(0xff6600);
-            graphics.fillRect(screenX + 12, screenY + 6, 6, 2);
-            graphics.fillRect(screenX - 18, screenY + 6, 6, 2);
-
-            // Engine pods
-            graphics.fillStyle(0x333344);
-            graphics.fillRoundedRect(screenX - 5, screenY + 10, 4, 8, 1);
-            graphics.fillRoundedRect(screenX + 1, screenY + 10, 4, 8, 1);
+            // Side thrusters (industrial blocks)
+            graphics.fillStyle(0x444455);
+            graphics.fillRect(-12, -6, 3, 4);
+            graphics.fillRect(-12, 2, 3, 4);
 
             // Engine glow
             const engineGlow = Math.sin(Date.now() / 40) * 0.3 + 0.7;
             const isMoving = keys.W?.isDown || keys.S?.isDown || keys.A?.isDown || keys.D?.isDown;
             const glowIntensity = isMoving ? 1 : 0.5;
 
-            graphics.fillStyle(0xff4400, engineGlow * glowIntensity);
-            graphics.fillRect(screenX - 4, screenY + 16, 3, 4 + (isMoving ? 3 : 0));
-            graphics.fillRect(screenX + 1, screenY + 16, 3, 4 + (isMoving ? 3 : 0));
+            graphics.fillStyle(0xff4400, engineGlow * glowIntensity * 0.7);
+            graphics.fillRect(-14, -5, 2, 3);
+            graphics.fillRect(-14, 2, 2, 3);
 
-            graphics.fillStyle(0xffaa00, engineGlow * glowIntensity * 0.8);
-            graphics.fillRect(screenX - 3, screenY + 17, 2, 3 + (isMoving ? 2 : 0));
-            graphics.fillRect(screenX + 1, screenY + 17, 2, 3 + (isMoving ? 2 : 0));
+            graphics.fillStyle(0xffaa00, engineGlow * glowIntensity * 0.5);
+            graphics.fillRect(-13, -4, 1, 2);
+            graphics.fillRect(-13, 2, 1, 2);
 
-            // Weapon hardpoints
-            graphics.fillStyle(0x444455);
-            graphics.fillCircle(screenX - 10, screenY, 3);
-            graphics.fillCircle(screenX + 10, screenY, 3);
-            graphics.fillStyle(0x666677);
-            graphics.fillCircle(screenX - 10, screenY, 2);
-            graphics.fillCircle(screenX + 10, screenY, 2);
+            // Warning stripes on front
+            graphics.fillStyle(0xffcc00);
+            graphics.fillRect(10, -6, 2, 2);
+            graphics.fillRect(10, 4, 2, 2);
 
-            // Mining mode indicator - simplified for performance
-            if (miningMode) {
+            // Restore graphics state
+            graphics.restore();
+
+            // Mining laser - yellow beam to target ore (wider and brighter)
+            if (miningMode && miningTarget) {
+                const targetScreenX = miningTarget.x - camera.x;
+                const targetScreenY = miningTarget.y - camera.y;
+
+                // Laser glow/pulse effect
+                const laserPulse = Math.sin(Date.now() / 80) * 0.3 + 0.7;
+
+                // Outer glow - wider
+                graphics.lineStyle(14, 0xffff00, laserPulse * 0.3);
+                graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+
+                // Middle glow - brighter
+                graphics.lineStyle(7, 0xffff44, laserPulse * 0.7);
+                graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+
+                // Core beam - very bright
+                graphics.lineStyle(3, 0xffffcc, laserPulse * 0.95);
+                graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+
+                // Impact effect at target - larger and brighter
+                graphics.fillStyle(0xffff00, laserPulse * 0.7);
+                graphics.fillCircle(targetScreenX, targetScreenY, 12);
+                graphics.fillStyle(0xffffff, laserPulse * 0.6);
+                graphics.fillCircle(targetScreenX, targetScreenY, 6);
+            } else if (miningMode) {
+                // Show mining mode active indicator
                 const miningPulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
                 graphics.lineStyle(2, 0x44ff44, miningPulse * 0.6);
                 graphics.strokeCircle(screenX, screenY, 30);
-                
-                // Single rotating indicator instead of 4 beams
-                const angle = (Date.now() / 400) % (Math.PI * 2);
-                graphics.lineStyle(2, 0x88ff88, miningPulse * 0.5);
-                const beamX = screenX + Math.cos(angle) * 25;
-                const beamY = screenY + Math.sin(angle) * 25;
-                graphics.lineBetween(screenX, screenY, beamX, beamY);
             }
         }
 
@@ -3854,37 +4274,63 @@
                 // 2x2 Miner Constructor
                 const consW = TILE_SIZE * 2;
                 const consH = TILE_SIZE * 2;
-                
+
                 // Base platform
                 graphics.fillStyle(0x2a4a2a);
                 graphics.fillRoundedRect(px + 2, py + 2, consW - 4, consH - 4, 6);
-                
+
                 // Construction bay
                 graphics.fillStyle(0x44aa44);
                 graphics.fillRoundedRect(px + 8, py + 8, consW - 16, consH - 16, 4);
-                
+
                 // Assembly arms
                 graphics.fillStyle(0x666666);
                 graphics.fillRect(px + 10, py + 10, 4, consH - 20);
                 graphics.fillRect(px + consW - 14, py + 10, 4, consH - 20);
-                
+
                 // Lead and titanium input hoppers
                 graphics.fillStyle(0x888899);  // Lead hopper
                 graphics.fillRect(px + 8, py + 8, 12, 10);
                 graphics.fillStyle(0x4a7c9b);  // Titanium hopper
                 graphics.fillRect(px + consW - 20, py + 8, 12, 10);
-                
+
                 // Construction platform in center (animated if crafting)
                 if (b.craftProgress > 0) {
+                    const progress = b.craftProgress / BUILDINGS['miner-constructor'].craftTime;
+
+                    // Draw semi-transparent miner sprite being fabricated
+                    const minerAlpha = progress * 0.7; // Fade in as progress increases
+                    const centerX = px + consW/2;
+                    const centerY = py + consH/2;
+
+                    // Miner body (ghost image)
+                    graphics.fillStyle(0x4CAF50, minerAlpha);
+                    graphics.fillCircle(centerX, centerY, 8);
+
+                    // Miner propeller effect
+                    graphics.fillStyle(0x66BB66, minerAlpha * 0.5);
+                    graphics.fillCircle(centerX - 6, centerY - 6, 3);
+                    graphics.fillCircle(centerX + 6, centerY - 6, 3);
+
+                    // Scanning line animation (back and forth quickly)
+                    const scanTime = Date.now() % 800; // 800ms loop (faster)
+                    const scanProgress = scanTime < 400 ? scanTime / 400 : (800 - scanTime) / 400; // Back and forth
+                    const scanX = px + 12 + (consW - 24) * scanProgress;
+
+                    // Vertical scanning line
+                    graphics.lineStyle(2, 0x44ffff, 0.8);
+                    graphics.lineBetween(scanX, py + 12, scanX, py + consH - 12);
+
+                    // Glow effect on scanning line
+                    graphics.lineStyle(6, 0x44ffff, 0.3);
+                    graphics.lineBetween(scanX, py + 12, scanX, py + consH - 12);
+
+                    // Assembly effect particles
                     const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
-                    graphics.fillStyle(0x44ff44, pulse);
-                    graphics.fillCircle(px + consW/2, py + consH/2, 12);
-                    
-                    // Partial drone being built
-                    graphics.fillStyle(0x4CAF50);
-                    graphics.fillCircle(px + consW/2, py + consH/2, 6);
+                    graphics.fillStyle(0x44ff44, pulse * 0.4);
+                    graphics.fillCircle(centerX, centerY, 16);
                 }
-                
+
                 // Storage indicators
                 if (b.leadStored > 0) {
                     const leadBar = Math.min(1, b.leadStored / 100);
@@ -3896,7 +4342,7 @@
                     graphics.fillStyle(0x4a7c9b);
                     graphics.fillRect(px + consW - 24, py + consH - 8, 20 * titaniumBar, 4);
                 }
-                
+
                 // Craft progress indicator
                 if (b.craftProgress > 0) {
                     const progress = b.craftProgress / BUILDINGS['miner-constructor'].craftTime;
@@ -3996,6 +4442,48 @@
                 } else {
                     graphics.fillCircle(px + TILE_SIZE / 2, py + 4, 2);
                     graphics.fillCircle(px + TILE_SIZE / 2, py + TILE_SIZE - 4, 2);
+                }
+
+            } else if (b.type === 'payload-conveyor') {
+                // Payload conveyor - wider, reinforced conveyor for drones
+                graphics.fillStyle(0x2a5c7b);
+                graphics.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+
+                const dir = getDirection(b.rotation);
+                const beltPhase = (Date.now() / 200) % 1; // Slower movement
+
+                // Heavy-duty belt surface
+                graphics.fillStyle(0x4a7c9b);
+                graphics.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+
+                // Reinforced rails
+                graphics.fillStyle(0x5a8cab);
+                if (dir.x !== 0) {
+                    graphics.fillRect(px, py + 2, TILE_SIZE, 4);
+                    graphics.fillRect(px, py + TILE_SIZE - 6, TILE_SIZE, 4);
+                } else {
+                    graphics.fillRect(px + 2, py, 4, TILE_SIZE);
+                    graphics.fillRect(px + TILE_SIZE - 6, py, 4, TILE_SIZE);
+                }
+
+                // Moving grid pattern to show it's active
+                for (let i = 0; i < 3; i++) {
+                    const progress = ((i / 3 + beltPhase) % 1);
+                    graphics.fillStyle(0x6a9cbb, 0.4);
+
+                    if (dir.x !== 0) {
+                        const lineX = px + progress * TILE_SIZE;
+                        graphics.fillRect(lineX, py + 4, 2, TILE_SIZE - 8);
+                    } else {
+                        const lineY = py + progress * TILE_SIZE;
+                        graphics.fillRect(px + 4, lineY, TILE_SIZE - 8, 2);
+                    }
+                }
+
+                // Show if it has a miner loaded
+                if (b.payloadMiner) {
+                    graphics.fillStyle(0x4CAF50, 0.8);
+                    graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 6);
                 }
 
             } else if (b.type === 'router') {
@@ -4139,10 +4627,17 @@
 
                 buildings.forEach(other => {
                     if (other === b) return;
-                    if (other.type !== 'power-node' && other.type !== 'generator' && other.type !== 'laser') return;
+                    // Connect to power sources, other power nodes, and all power consumers
+                    const isPowerSource = other.type === 'generator' || other.type === 'thermal-generator';
+                    const isPowerNode = other.type === 'power-node';
+                    const isPowerConsumer = other.type === 'laser' || other.type === 'alloy-factory' || other.type === 'repair' || other.type === 'miner-constructor';
 
-                    const ox = other.x * TILE_SIZE + TILE_SIZE/2;
-                    const oy = other.y * TILE_SIZE + TILE_SIZE/2;
+                    if (!isPowerSource && !isPowerNode && !isPowerConsumer) return;
+
+                    const ow = other.width || 1;
+                    const oh = other.height || 1;
+                    const ox = (other.x + ow / 2) * TILE_SIZE;
+                    const oy = (other.y + oh / 2) * TILE_SIZE;
                     const dist = Math.sqrt((ox - nx)**2 + (oy - ny)**2);
 
                     if (dist <= range) {
