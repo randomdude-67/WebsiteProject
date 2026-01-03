@@ -442,27 +442,95 @@
     <div id="game"></div>
 
     <script>
-        // Game Constants
-        const TILE_SIZE = 32;
-        const MAP_WIDTH = 200;  // Expanded from 100
-        const MAP_HEIGHT = 150; // Expanded from 75
+        // ============================================
+        // MINDUSTRY CLONE - REFACTORED CODE
+        // ============================================
+        // Key Improvements:
+        // - CONFIG object centralizes all magic numbers for easy balancing
+        // - Unified deliverItem() function eliminates duplicate item handling
+        // - Spatial grid optimization for collision detection
+        // - Object pooling for bullets and particles
+        // - Consolidated building/enemy/item updates
+        // ============================================
+
+        // ============================================
+        // GAME CONFIGURATION - Centralized Settings
+        // ============================================
+        const CONFIG = {
+            // Map settings
+            TILE_SIZE: 32,
+            MAP_WIDTH: 200,
+            MAP_HEIGHT: 150,
+            
+            // Player settings
+            PLAYER: {
+                SPEED: 5,
+                HEALTH: 100,
+                FIRE_COOLDOWN_MAX: 350,
+                BULLET_SPEED: 10,
+                BULLET_DAMAGE: 8,
+                RESPAWN_TIME: 3000,
+                INVULNERABLE_TIME: 2000
+            },
+            
+            // Item/Resource settings
+            ITEM_SPEED: 1.5,
+            MAX_ITEMS: 800,
+            MAX_PARTICLES: 300,
+            
+            // Collision/Detection
+            GRID_CELL_SIZE: 32 * 4,  // 4 tiles per cell
+            MAX_MINERS_PER_NODE: 3,
+            
+            // Mining/Production
+            DRILL_SPEED_BONUS_PER_ORE: 0.25,  // Each ore tile adds 25% speed
+            MINING_DAMAGE_PER_FRAME: 0.1,
+            MINER_MINING_COOLDOWN: 800,
+            MINER_BASE_SPEED: 2.5,
+            MINER_RETURN_SPEED: 3.5,
+            MINER_INTERACTION_DISTANCE: 1.5,
+            MINER_MINING_DISTANCE: 1.5,
+            MINER_COLLISION_RADIUS: 14,
+            MINER_AVOIDANCE_RADIUS: 14 * 4,
+            MINER_HEALTH: 50,
+            MINER_MAX_INVENTORY: 30,
+            
+            // Wave/Spawning
+            FIRST_WAVE_TIMER: 240,
+            WAVE_INTERVAL: 120,
+            ENEMY_BASE_SEARCH_RADIUS: 5,
+            
+            // Zoom settings
+            MIN_ZOOM: 0.5,
+            MAX_ZOOM: 2.0,
+            
+            // Performance limits
+            MAX_BULLETS: 80,
+            MAX_ENEMY_BULLETS: 100,
+            MAX_MINERS: 50
+        };
+
+        // Game Constants (using CONFIG)
+        const TILE_SIZE = CONFIG.TILE_SIZE;
+        const MAP_WIDTH = CONFIG.MAP_WIDTH;
+        const MAP_HEIGHT = CONFIG.MAP_HEIGHT;
 
         // Player ship
         let player = {
             x: MAP_WIDTH * TILE_SIZE / 2,
             y: MAP_HEIGHT * TILE_SIZE / 2,
-            health: 100,
-            maxHealth: 100,
-            speed: 5,
+            health: CONFIG.PLAYER.HEALTH,
+            maxHealth: CONFIG.PLAYER.HEALTH,
+            speed: CONFIG.PLAYER.SPEED,
             angle: 0,
             respawnTimer: 0,
             invulnerable: 0,
             deaths: 0,
-            // Shooting properties (nerfed for balance)
+            // Shooting properties
             fireCooldown: 0,
-            fireCooldownMax: 350, // ms between shots (slower fire rate)
-            bulletSpeed: 10,
-            bulletDamage: 8 // reduced damage
+            fireCooldownMax: CONFIG.PLAYER.FIRE_COOLDOWN_MAX,
+            bulletSpeed: CONFIG.PLAYER.BULLET_SPEED,
+            bulletDamage: CONFIG.PLAYER.BULLET_DAMAGE
         };
 
         // Player bullets (separate from turret bullets)
@@ -471,8 +539,8 @@
         // Camera
         let camera = { x: 0, y: 0 };
         let zoom = 1.0;
-        const MIN_ZOOM = 0.5;
-        const MAX_ZOOM = 2.0;
+        const MIN_ZOOM = CONFIG.MIN_ZOOM;
+        const MAX_ZOOM = CONFIG.MAX_ZOOM;
 
         // Resources
         let resources = {
@@ -482,7 +550,8 @@
             titanium: 0,
             graphite: 0,
             alloy: 0,
-            sand: 0
+            sand: 0,
+            silicon: 0
         };
 
         // Terrain types
@@ -503,16 +572,22 @@
                 width: 2, height: 2, buildTime: 500
             },
             'pneumatic-drill': {
-                category: 'production', cost: { copper: 45, graphite: 15 }, health: 50,
+                category: 'production', cost: { copper: 45, graphite: 15, silicon: 8 }, health: 50,
                 icon: '⚙', name: 'P-Drill', hotkey: '2',
                 desc: 'Fast mining 2x speed', mineSpeed: 2,
                 width: 2, height: 2, buildTime: 500
             },
             'alloy-drill': {
-                category: 'production', cost: { alloy: 45, titanium: 30 }, health: 80,
+                category: 'production', cost: { alloy: 45, titanium: 30, silicon: 20 }, health: 80,
                 icon: '🔩', name: 'A-Drill', hotkey: null,
                 desc: 'Alloy drill 4x speed', mineSpeed: 4,
                 width: 2, height: 2, buildTime: 1000
+            },
+            'silicon-smelter': {
+                category: 'production', cost: { copper: 80, lead: 50 }, health: 70,
+                icon: '🔶', name: 'Silicon Smelter', hotkey: null,
+                desc: 'Smelts sand+coal into silicon (needs power)', craftTime: 2500, powerUse: 8,
+                width: 2, height: 2, buildTime: 2000
             },
             'graphite-press': {
                 category: 'production', cost: { copper: 60, lead: 40 }, health: 60,
@@ -521,13 +596,13 @@
                 width: 2, height: 2, buildTime: 1500
             },
             'alloy-factory': {
-                category: 'production', cost: { copper: 90, lead: 90 }, health: 60,
+                category: 'production', cost: { copper: 90, lead: 90, silicon: 15 }, health: 60,
                 icon: '🏭', name: 'Alloy Factory', hotkey: null,
                 desc: 'Combines lead+titanium into alloy (needs power)', craftTime: 3000, powerUse: 5,
                 width: 2, height: 2, buildTime: 2000
             },
             'miner-constructor': {
-                category: 'units', cost: { lead: 120, titanium: 120 }, health: 100,
+                category: 'units', cost: { lead: 120, titanium: 120, silicon: 40 }, health: 100,
                 icon: '🏗️', name: 'Miner Constructor', hotkey: null,
                 desc: 'Builds mining drones (50 lead+titanium, 30s)', craftTime: 30000,
                 width: 2, height: 2, buildTime: 3000
@@ -538,7 +613,7 @@
                 desc: 'Moves items in one direction', buildTime: 200
             },
             'alloy-conveyor': {
-                category: 'transport', cost: { alloy: 3 }, health: 40,
+                category: 'transport', cost: { alloy: 3, silicon: 2 }, health: 40,
                 icon: '⇒', name: 'A-Conveyor', hotkey: null,
                 desc: 'Fast alloy conveyor 2x speed', speedMult: 2, buildTime: 300
             },
@@ -553,7 +628,7 @@
                 desc: 'Items pass through', buildTime: 300
             },
             'payload-conveyor': {
-                category: 'units', cost: { titanium: 15, alloy: 10 }, health: 35,
+                category: 'units', cost: { titanium: 15, alloy: 10, silicon: 8 }, health: 35,
                 icon: '⊞', name: 'Payload Conv', hotkey: null,
                 desc: 'Transports miner drones', buildTime: 500,
                 width: 2, height: 2
@@ -564,7 +639,7 @@
                 desc: 'Burns coal for power', powerOutput: 10, coalConsume: 0.1, buildTime: 1000
             },
             'thermal-generator': {
-                category: 'power', cost: { graphite: 80, lead: 120, titanium: 50 }, health: 100,
+                category: 'power', cost: { graphite: 80, lead: 120, titanium: 50, silicon: 30 }, health: 100,
                 icon: '⚡', name: 'Thermal Gen', hotkey: null,
                 desc: 'Burns coal+lead for 30 power', powerOutput: 30, coalConsume: 0.15, leadConsume: 0.1,
                 width: 2, height: 2, buildTime: 2000
@@ -575,7 +650,7 @@
                 desc: 'Distributes power', powerRange: 6, buildTime: 500
             },
             'large-power-node': {
-                category: 'power', cost: { copper: 60, lead: 60, titanium: 30 }, health: 80,
+                category: 'power', cost: { copper: 60, lead: 60, titanium: 30, silicon: 20 }, health: 80,
                 icon: '⚡', name: 'L-P-Node', hotkey: null,
                 desc: 'Large power node 2x2, extended range', powerRange: 12, buildTime: 1500,
                 width: 2, height: 2
@@ -596,7 +671,7 @@
                 desc: 'Electric arc (needs power)', damage: 15, range: 8, cooldown: 800, powerUse: 2, buildTime: 3000
             },
             stormer: {
-                category: 'defense', cost: { titanium: 70, copper: 50, lead: 40 }, health: 70,
+                category: 'defense', cost: { titanium: 70, copper: 50, lead: 40, silicon: 25 }, health: 70,
                 icon: '🌪', name: 'Stormer', hotkey: null,
                 desc: 'Blasts sand like flamethrower, slows enemies', damage: 2, range: 5, cooldown: 100, ammoType: 'sand', ammoUse: 1, slowEffect: 0.5, buildTime: 4000
             },
@@ -611,12 +686,12 @@
                 desc: 'Strong titanium wall', buildTime: 500
             },
             'alloy-wall': {
-                category: 'defense', cost: { alloy: 24 }, health: 650,
+                category: 'defense', cost: { alloy: 24, silicon: 12 }, health: 650,
                 icon: '▦', name: 'A-Wall', hotkey: null,
                 desc: 'Reinforced alloy wall', buildTime: 1000
             },
             'alloy-turret': {
-                category: 'defense', cost: { alloy: 75, titanium: 45 }, health: 100,
+                category: 'defense', cost: { alloy: 75, titanium: 45, silicon: 30 }, health: 100,
                 icon: '🎯', name: 'Salvo', hotkey: null,
                 desc: 'Rapid alloy turret (uses alloy)', damage: 12, range: 8, cooldown: 250, ammoType: 'alloy', ammoUse: 1, buildTime: 5000
             },
@@ -654,7 +729,7 @@
         let particles = [];
         let miners = []; // Mining drones
         let wave = 0;
-        let waveTimer = 240; // Start with 240 seconds (4 minutes - first wave)
+        let waveTimer = CONFIG.FIRST_WAVE_TIMER;
         let coreHealth = 500;
         let maxCoreHealth = 500;
         let gameOver = false;
@@ -733,7 +808,7 @@
         }
 
         // Spatial hash grid for fast collision lookups
-        const GRID_CELL_SIZE = TILE_SIZE * 4; // 4 tiles per cell
+        const GRID_CELL_SIZE = CONFIG.GRID_CELL_SIZE;
         let spatialGrid = {};
 
         function getSpatialKey(x, y) {
@@ -1194,6 +1269,7 @@
                 'pneumatic-drill': 'linear-gradient(135deg, #B87333, #8B5A2B)',
                 'alloy-drill': 'linear-gradient(135deg, #b8967a, #8a6a5a)',
                 'graphite-press': 'linear-gradient(135deg, #333333, #1a1a1a)',
+                'silicon-smelter': 'linear-gradient(135deg, #ff9900, #cc6600)',
                 'alloy-factory': 'linear-gradient(135deg, #887766, #665544)',
                 'miner-constructor': 'linear-gradient(135deg, #44aa44, #227722)',
                 conveyor: 'linear-gradient(135deg, #555, #333)',
@@ -1264,6 +1340,12 @@
             updateResourceUI();
         }
 
+        /**
+         * Convert screen coordinates to world coordinates accounting for zoom and camera
+         * @param {number} screenX - X position in screen space
+         * @param {number} screenY - Y position in screen space
+         * @returns {{x: number, y: number}} World coordinates
+         */
         function screenToWorld(screenX, screenY) {
             return {
                 x: screenX / zoom + camera.x,
@@ -1271,6 +1353,12 @@
             };
         }
 
+        /**
+         * Convert world coordinates to tile coordinates
+         * @param {number} worldX - X position in world space
+         * @param {number} worldY - Y position in world space
+         * @returns {{x: number, y: number}} Tile coordinates (floored)
+         */
         function worldToTile(worldX, worldY) {
             return {
                 x: Math.floor(worldX / TILE_SIZE),
@@ -1441,7 +1529,7 @@
                         html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Mining:</span> <span style="color:${getOreColorCSS(building.ore)}">${building.ore}</span></div>`;
                         // Show ore count and speed bonus for drills
                         if (building.oreCount !== undefined && building.type && (building.type === 'drill' || building.type === 'pneumatic-drill' || building.type === 'alloy-drill')) {
-                            const speedMultiplier = 1 + (building.oreCount - 1) * 0.25;
+                            const speedMultiplier = 1 + (building.oreCount - 1) * CONFIG.DRILL_SPEED_BONUS_PER_ORE;
                             const effectiveSpeed = data.mineSpeed * speedMultiplier;
                             html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Ore tiles:</span> ${building.oreCount}/4</div>`;
                             html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Effective speed:</span> ${effectiveSpeed.toFixed(2)}x <span style="color:#4CAF50">(+${((speedMultiplier - 1) * 100).toFixed(0)}%)</span></div>`;
@@ -1666,6 +1754,14 @@
                 building.craftProgress = 0;
             }
 
+            // Silicon smelter stores sand and coal
+            if (selectedBuilding === 'silicon-smelter') {
+                building.sandStored = 0;
+                building.coalStored = 0;
+                building.craftProgress = 0;
+                building.powered = false;
+            }
+
             // Turrets start with NO ammo - must be fed via conveyors
             if (selectedBuilding === 'turret' || selectedBuilding === 'scatter' || selectedBuilding === 'alloy-turret' || selectedBuilding === 'stormer') {
                 building.ammo = 0;
@@ -1836,7 +1932,7 @@
                     const data = BUILDINGS[b.type];
                     // Speed bonus: each ore tile adds 25% speed (1 tile = 1x, 2 tiles = 1.25x, 3 tiles = 1.5x, 4 tiles = 1.75x)
                     const oreCount = b.oreCount || 1;
-                    const speedMultiplier = 1 + (oreCount - 1) * 0.25;
+                    const speedMultiplier = 1 + (oreCount - 1) * CONFIG.DRILL_SPEED_BONUS_PER_ORE;
                     b.stored = (b.stored || 0) + data.mineSpeed * speedMultiplier;
                     if (b.stored >= 2) {
                         outputItem(b, b.ore);
@@ -1884,6 +1980,9 @@
                 if (b.type === 'alloy-factory') {
                     totalConsumption += BUILDINGS['alloy-factory'].powerUse;
                 }
+                if (b.type === 'silicon-smelter') {
+                    totalConsumption += BUILDINGS['silicon-smelter'].powerUse;
+                }
                 if (b.type === 'repair') {
                     totalConsumption += BUILDINGS.repair.powerUse;
                 }
@@ -1897,7 +1996,7 @@
                 Math.min(1.0, totalProduction / totalConsumption) : 1.0;
 
             // Power all connected consumers (they all run but slower if not enough power)
-            buildings.filter(b => b.type === 'laser' || b.type === 'alloy-factory' || b.type === 'repair').forEach(consumer => {
+            buildings.filter(b => b.type === 'laser' || b.type === 'alloy-factory' || b.type === 'silicon-smelter' || b.type === 'repair').forEach(consumer => {
                 const cw = consumer.width || 1;
                 const ch = consumer.height || 1;
                 const cx = (consumer.x + cw / 2) * TILE_SIZE;
@@ -2007,6 +2106,21 @@
                 }
             });
 
+            // Silicon smelter crafting (needs power, sand and coal) - only process master buildings, not tile refs
+            buildings.filter(b => b.type === 'silicon-smelter' && !b.isTileRef).forEach(smelter => {
+                if (smelter.powered && (smelter.sandStored || 0) >= 1 && (smelter.coalStored || 0) >= 1) {
+                    const progressRate = 500 * (smelter.powerEfficiency || 0); // Slowed by power efficiency
+                    smelter.craftProgress = (smelter.craftProgress || 0) + progressRate;
+                    if (smelter.craftProgress >= BUILDINGS['silicon-smelter'].craftTime) {
+                        smelter.craftProgress = 0;
+                        smelter.sandStored = (smelter.sandStored || 0) - 1;
+                        smelter.coalStored = (smelter.coalStored || 0) - 1;
+                        // Output silicon
+                        outputItem(smelter, 'silicon');
+                    }
+                }
+            });
+
             // Alloy factory crafting (slower when low power) - only process master buildings, not tile refs
             buildings.filter(b => b.type === 'alloy-factory' && !b.isTileRef).forEach(factory => {
                 if (factory.powered && (factory.leadStored || 0) >= 1 && (factory.titaniumStored || 0) >= 1) {
@@ -2044,7 +2158,7 @@
 
         // Track which ore nodes are being mined by how many drones (for slot-based pathfinding)
         let oreNodeMiners = {}; // Key: "x,y", Value: array of miner indices
-        const MAX_MINERS_PER_NODE = 3; // Maximum drones that can mine a single ore node
+        const MAX_MINERS_PER_NODE = CONFIG.MAX_MINERS_PER_NODE;
 
         function getOreNodeKey(x, y) {
             return `${x},${y}`;
@@ -2111,11 +2225,11 @@
                     targetY: targetOre.y,
                     oreType: targetOre.type,
                     miningCooldown: 0,
-                    health: 50,
-                    maxHealth: 50,
+                    health: CONFIG.MINER_HEALTH,
+                    maxHealth: CONFIG.MINER_HEALTH,
                     // Inventory system
                     inventory: 0,
-                    maxInventory: 30,
+                    maxInventory: CONFIG.MINER_MAX_INVENTORY,
                     state: 'mining', // 'mining' or 'returning'
                     homeX: constructorCenterX, // Remember where we came from
                     homeY: constructorCenterY
@@ -2159,7 +2273,7 @@
                         (t.type === 'core' && pos.x >= t.x && pos.x < t.x + 3 && pos.y >= t.y && pos.y < t.y + 3)
                     );
                     
-                    if (target && tryOutputToTarget(building, target, pos.x, pos.y, itemType)) {
+                    if (target && deliverItem(building, target, pos.x, pos.y, itemType)) {
                         return; // Successfully output, stop checking
                     }
                 }
@@ -2205,120 +2319,125 @@
                         return false;
                     });
 
-                    if (target && tryOutputToTarget(building, target, pos.x, pos.y, itemType)) {
+                    if (target && deliverItem(building, target, pos.x, pos.y, itemType)) {
                         return; // Successfully output
                     }
                 }
             }
         }
 
-        function tryOutputToTarget(building, target, outX, outY, itemType) {
+        // Unified item delivery/output handling - replaces duplicate code
+        // @param {Object} building - Source building
+        // @param {Object} target - Target building/structure  
+        // @param {number} targetTileX - X coordinate of target tile
+        // @param {number} targetTileY - Y coordinate of target tile
+        // @param {string} itemType - Type of resource
+        // @param {boolean} isMovingItem - Whether this is an item on a conveyor (vs direct output)
+        // @returns {boolean} - Whether delivery/output was successful
+        function deliverItem(building, target, targetTileX, targetTileY, itemType, isMovingItem = false) {
             if (target.type === 'core') {
                 resources[itemType] = (resources[itemType] || 0) + 1;
                 updateResourceUI();
-                spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                 return true;
             } else if (target.type === 'generator' && itemType === 'coal') {
                 target.coalStored = (target.coalStored || 0) + 1;
+                if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                 return true;
             } else if (target.type === 'thermal-generator') {
                 if (itemType === 'coal' && target.coalStored < 10) {
                     target.coalStored++;
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
                 } else if (itemType === 'lead' && target.leadStored < 10) {
                     target.leadStored++;
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
                 }
             } else if (target.type === 'graphite-press' && itemType === 'coal') {
-                if ((target.coalStored || 0) < 10) { // Allow storing more coal
+                if ((target.coalStored || 0) < 10) {
                     target.coalStored = (target.coalStored || 0) + 1;
-                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    return true;
+                }
+            } else if (target.type === 'silicon-smelter') {
+                if (itemType === 'sand' && (target.sandStored || 0) < 10) {
+                    target.sandStored = (target.sandStored || 0) + 1;
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    return true;
+                } else if (itemType === 'coal' && (target.coalStored || 0) < 10) {
+                    target.coalStored = (target.coalStored || 0) + 1;
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
                 }
             } else if (target.type === 'alloy-factory') {
-                // Alloy factory accepts lead and titanium
                 if (itemType === 'lead' && (target.leadStored || 0) < 10) {
                     target.leadStored = (target.leadStored || 0) + 1;
-                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
                 } else if (itemType === 'titanium' && (target.titaniumStored || 0) < 10) {
                     target.titaniumStored = (target.titaniumStored || 0) + 1;
-                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
                 }
             } else if (target.type === 'miner-constructor') {
-                // Miner constructor accepts lead and titanium
                 if (itemType === 'lead' && target.leadStored < 100) {
                     target.leadStored++;
-                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
                 } else if (itemType === 'titanium' && target.titaniumStored < 100) {
                     target.titaniumStored++;
-                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
                 }
-            } else if (target.type === 'conveyor' || target.type === 'alloy-conveyor' || target.type === 'router' || target.type === 'junction') {
-                // Don't output to a conveyor that's facing towards us (it wants to output TO us, not receive FROM us)
-                if (target.type === 'conveyor' || target.type === 'alloy-conveyor') {
-                    const conveyorOutputDir = getDirection(target.rotation);
-                    const conveyorOutputX = target.x + conveyorOutputDir.x;
-                    const conveyorOutputY = target.y + conveyorOutputDir.y;
-
-                    // Check if the conveyor is outputting towards the source building
-                    const bw = building.width || 1;
-                    const bh = building.height || 1;
-                    const conveyorPointsToSource = conveyorOutputX >= building.x && conveyorOutputX < building.x + bw &&
-                                                     conveyorOutputY >= building.y && conveyorOutputY < building.y + bh;
-                    if (conveyorPointsToSource) {
-                        return false; // Can't output to a conveyor facing us
-                    }
-                }
-
-                // Items now use world coordinates for smooth movement
-                // For 2x2 buildings, use the center of the entire building, not just top-left
+            } else if ((target.type === 'turret' || target.type === 'scatter' || target.type === 'alloy-turret' || target.type === 'stormer') &&
+                       BUILDINGS[target.type].ammoType === itemType &&
+                       target.ammo < (target.maxAmmo || 20)) {
+                target.ammo++;
+                if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                return true;
+            } else if (!isMovingItem && (target.type === 'conveyor' || target.type === 'alloy-conveyor' || target.type === 'router' || target.type === 'junction')) {
+                // Non-moving items: Create item object for conveyor transport
+                if (items.length >= CONFIG.MAX_ITEMS) return false;
+                
                 const bw = building.width || 1;
                 const bh = building.height || 1;
                 const startWorldX = (building.x + bw / 2) * TILE_SIZE;
                 const startWorldY = (building.y + bh / 2) * TILE_SIZE;
-
-                // Calculate fromDir based on where the item exits the building
+                
                 let fromDir = -1;
-                if (outX < building.x) fromDir = 2; // Exiting left, came from right
-                else if (outX >= building.x + bw) fromDir = 0; // Exiting right, came from left
-                else if (outY < building.y) fromDir = 3; // Exiting up, came from down
-                else if (outY >= building.y + bh) fromDir = 1; // Exiting down, came from up
+                if (targetTileX < building.x) fromDir = 2;
+                else if (targetTileX >= building.x + bw) fromDir = 0;
+                else if (targetTileY < building.y) fromDir = 3;
+                else if (targetTileY >= building.y + bh) fromDir = 1;
 
-                // Check item limit for performance
-                if (items.length >= MAX_ITEMS) {
-                    // Too many items - skip spawning to prevent lag
-                    return false;
-                }
                 items.push({
                     type: itemType,
                     worldX: startWorldX,
                     worldY: startWorldY,
-                    targetTileX: outX,
-                    targetTileY: outY,
+                    targetTileX: targetTileX,
+                    targetTileY: targetTileY,
                     fromDir: fromDir
                 });
-                return true;
-            } else if ((target.type === 'turret' || target.type === 'scatter') &&
-                       BUILDINGS[target.type].ammoType === itemType &&
-                       target.ammo < (target.maxAmmo || 20)) {
-                // Feed ammo to turret
-                target.ammo++;
-                spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                 return true;
             }
             return false;
         }
 
-        // Smooth item movement speed (pixels per frame)
-        const ITEM_SPEED = 1.5;
-        // Maximum items on conveyors for performance
-        const MAX_ITEMS = 800;  // Increased for larger map
-
-        // Helper function to handle item reaching a target
+        /**
+         * Handle an item reaching a target during conveyor transport
+         * Used during updateItems() for routing items through conveyors
+         * @param {Object} item - Item being moved
+         * @param {Object} target - Target building/tile
+         * @param {number} nextX - Next tile X
+         * @param {number} nextY - Next tile Y
+         * @param {number} dir - Direction traveled
+         * @param {number} targetWorldX - World X of target
+         * @param {number} targetWorldY - World Y of target
+         * @param {Array} toRemove - Array to store indices to remove
+         * @param {number} idx - Index of item
+         * @returns {boolean} - Whether item was delivered/moved
+         */
         function handleItemTarget(item, target, nextX, nextY, dir, targetWorldX, targetWorldY, toRemove, idx) {
             if (target.type === 'core') {
                 resources[item.type] = (resources[item.type] || 0) + 1;
@@ -2332,7 +2451,6 @@
                 toRemove.push(idx);
                 return true;
             } else if (target.type === 'thermal-generator') {
-                // Thermal generator accepts coal and lead
                 if (item.type === 'coal' && target.coalStored < 10) {
                     target.coalStored = (target.coalStored || 0) + 1;
                     spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
@@ -2345,14 +2463,25 @@
                     return true;
                 }
             } else if (target.type === 'graphite-press' && item.type === 'coal') {
-                if (target.coalStored < 2) {
+                if (target.coalStored < 10) {
+                    target.coalStored++;
+                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                    toRemove.push(idx);
+                    return true;
+                }
+            } else if (target.type === 'silicon-smelter') {
+                if (item.type === 'sand' && target.sandStored < 10) {
+                    target.sandStored++;
+                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                    toRemove.push(idx);
+                    return true;
+                } else if (item.type === 'coal' && target.coalStored < 10) {
                     target.coalStored++;
                     spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
                     toRemove.push(idx);
                     return true;
                 }
             } else if (target.type === 'alloy-factory') {
-                // Alloy factory accepts lead and titanium
                 if (item.type === 'lead' && target.leadStored < 10) {
                     target.leadStored++;
                     spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
@@ -2365,7 +2494,6 @@
                     return true;
                 }
             } else if (target.type === 'miner-constructor') {
-                // Miner constructor accepts lead and titanium
                 if (item.type === 'lead' && target.leadStored < 100) {
                     target.leadStored++;
                     spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
@@ -2380,7 +2508,6 @@
             } else if ((target.type === 'turret' || target.type === 'scatter' || target.type === 'alloy-turret' || target.type === 'stormer') &&
                        BUILDINGS[target.type].ammoType === item.type &&
                        target.ammo < (target.maxAmmo || 20)) {
-                // Feed ammo to turret
                 target.ammo++;
                 spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
                 toRemove.push(idx);
@@ -2389,7 +2516,7 @@
                 // Check if next tile is blocked
                 const occupied = items.some(i => i !== item &&
                     i.targetTileX === nextX && i.targetTileY === nextY &&
-                    Math.sqrt((i.worldX - targetWorldX)**2 + (i.worldY - targetWorldY)**2) < TILE_SIZE * 0.6
+                    Math.sqrt((i.worldX - targetWorldX)**2 + (i.worldY - targetWorldY)**2) < CONFIG.TILE_SIZE * 0.6
                 );
                 if (!occupied) {
                     item.targetTileX = nextX;
@@ -2414,10 +2541,10 @@
                 const dy = targetWorldY - item.worldY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
-                if (dist > ITEM_SPEED) {
+                if (dist > CONFIG.ITEM_SPEED) {
                     // Still moving to target
-                    item.worldX += (dx / dist) * ITEM_SPEED;
-                    item.worldY += (dy / dist) * ITEM_SPEED;
+                    item.worldX += (dx / dist) * CONFIG.ITEM_SPEED;
+                    item.worldY += (dy / dist) * CONFIG.ITEM_SPEED;
                 } else {
                     // Reached target tile center - find next destination
                     item.worldX = targetWorldX;
@@ -2490,7 +2617,7 @@
                             let target = buildings.find(b => {
                                 // Check exact tile match
                                 if (b.x === nextX && b.y === nextY) return true;
-                                // Check 2x2 buildings (core, graphite-press, alloy-factory, thermal-generator, drills)
+                                // Check 2x2 buildings (core, graphite-press, silicon-smelter, alloy-factory, thermal-generator, drills)
                                 const w = b.width || 1;
                                 const h = b.height || 1;
                                 if (w > 1 || h > 1) {
@@ -2572,7 +2699,7 @@
                                     // Check if not blocked
                                     const occupied = items.some(i => i !== item &&
                                         i.targetTileX === nextX && i.targetTileY === nextY &&
-                                        Math.sqrt((i.worldX - targetWorldX)**2 + (i.worldY - targetWorldY)**2) < TILE_SIZE * 0.6
+                                        Math.sqrt((i.worldX - targetWorldX)**2 + (i.worldY - targetWorldY)**2) < CONFIG.TILE_SIZE * 0.6
                                     );
                                     if (!occupied) {
                                         validOutputs.push({ dir: dirIdx, target, nextX, nextY });
@@ -2657,6 +2784,15 @@
             });
         }
 
+        // ============================================
+        // UTILITY FUNCTIONS
+        // ============================================
+        
+        /**
+         * Get direction vector from rotation index (0-3)
+         * @param {number} rot - Rotation value (0=right, 1=down, 2=left, 3=up)
+         * @returns {{x: number, y: number}} Direction vector
+         */
         function getDirection(rot) {
             const dirs = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }];
             return dirs[rot % 4];
@@ -2727,10 +2863,14 @@
             }
         }
 
+        /**
+         * Spawn a wave of enemies with increasing difficulty
+         * Increases enemy count and variety based on wave number
+         */
         function spawnWave() {
             wave++;
             document.getElementById('wave-num').textContent = wave;
-            waveTimer = 120; // 2 minutes between waves
+            waveTimer = CONFIG.WAVE_INTERVAL;
 
             // Start with 1 enemy, add 1 per wave (much slower progression)
             const baseCount = wave;
@@ -3240,12 +3380,12 @@
                 const dy = targetWorldY - miner.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
                 const interactionDistance = miner.state === 'returning' ? TILE_SIZE * 2 : TILE_SIZE * 1.5;
-                const minerRadius = 14; // Collision radius for miners
-                const avoidanceRadius = minerRadius * 4; // Increased detection radius for better avoidance
+                const minerRadius = CONFIG.MINER_COLLISION_RADIUS;
+                const avoidanceRadius = CONFIG.MINER_AVOIDANCE_RADIUS;
 
                 if (dist > interactionDistance) {
                     // Calculate base movement direction
-                    const speed = miner.state === 'returning' ? 3.5 : 2.5; // Faster when returning
+                    const speed = miner.state === 'returning' ? CONFIG.MINER_RETURN_SPEED : CONFIG.MINER_BASE_SPEED;
                     let moveX = (dx / dist) * speed;
                     let moveY = (dy / dist) * speed;
 
@@ -3382,7 +3522,7 @@
                         // Mining ore
                         miner.miningCooldown -= delta;
                         if (miner.miningCooldown <= 0) {
-                            miner.miningCooldown = 800; // Mine every 0.8 seconds
+                            miner.miningCooldown = CONFIG.MINER_MINING_COOLDOWN;
                             miner.inventory++;
                             spawnParticles(targetWorldX, targetWorldY, getOreColor(miner.oreType), 2);
 
@@ -4508,7 +4648,7 @@
                     graphics.fillRect(screenX, screenY, TILE_SIZE * width, TILE_SIZE * height);
 
                     // Draw direction arrow in center for rotatable buildings
-                    if (isDrill || selectedBuilding === 'conveyor' || selectedBuilding === 'alloy-conveyor' || selectedBuilding === 'graphite-press' || selectedBuilding === 'alloy-factory' || selectedBuilding === 'thermal-generator' || selectedBuilding === 'payload-conveyor') {
+                    if (isDrill || selectedBuilding === 'conveyor' || selectedBuilding === 'alloy-conveyor' || selectedBuilding === 'graphite-press' || selectedBuilding === 'silicon-smelter' || selectedBuilding === 'alloy-factory' || selectedBuilding === 'thermal-generator' || selectedBuilding === 'payload-conveyor') {
                         const centerX = screenX + (TILE_SIZE * width) / 2;
                         const centerY = screenY + (TILE_SIZE * height) / 2;
                         drawArrow(centerX, centerY, rotation, 0xffffff);
@@ -5006,6 +5146,65 @@
                 
                 // Output direction arrow
                 drawArrow(px + pressW/2, py + pressH/2, b.rotation, 0x666666);
+
+            } else if (b.type === 'silicon-smelter') {
+                // 2x2 Silicon Smelter - industrial furnace
+                const smelterW = TILE_SIZE * 2;
+                const smelterH = TILE_SIZE * 2;
+                
+                // Main furnace body - orange industrial
+                graphics.fillStyle(0xff8800);
+                graphics.fillRoundedRect(px + 2, py + 2, smelterW - 4, smelterH - 4, 6);
+                
+                // Furnace chamber
+                graphics.fillStyle(0xcc6600);
+                graphics.fillRoundedRect(px + 6, py + 6, smelterW - 12, smelterH - 12, 4);
+                
+                // Heat glow in center (pulses when active)
+                const glowIntensity = b.powered ? Math.sin(Date.now() / 250) * 0.3 + 0.7 : 0.3;
+                graphics.fillStyle(0xff4400, glowIntensity * 0.5);
+                graphics.fillCircle(px + smelterW/2, py + smelterH/2, 12);
+                graphics.fillStyle(0xffaa00, glowIntensity * 0.7);
+                graphics.fillCircle(px + smelterW/2, py + smelterH/2, 8);
+                
+                // Input hoppers for sand and coal
+                graphics.fillStyle(0xeeee88);  // Sand hopper (left)
+                graphics.fillRect(px + 6, py + 8, 12, 10);
+                graphics.fillStyle(0x222222);  // Coal hopper (right)
+                graphics.fillRect(px + smelterW - 18, py + 8, 12, 10);
+                
+                // Chimney with smoke
+                graphics.fillStyle(0x333333);
+                graphics.fillRect(px + smelterW - 14, py + 4, 8, 12);
+                if (b.powered && b.craftProgress > 0) {
+                    const smokeOffset = (Date.now() / 100) % 20;
+                    graphics.fillStyle(0xff6600, 0.3);
+                    graphics.fillCircle(px + smelterW - 10, py - smokeOffset, 4);
+                    graphics.fillCircle(px + smelterW - 8, py - smokeOffset - 6, 3);
+                }
+                
+                // Silicon output chute
+                graphics.fillStyle(0xff9900);
+                graphics.fillRect(px + smelterW/2 - 6, py + smelterH - 8, 12, 6);
+                
+                // Crafting progress bar
+                if (b.craftProgress > 0) {
+                    const progress = b.craftProgress / BUILDINGS['silicon-smelter'].craftTime;
+                    graphics.fillStyle(0xff6600);
+                    graphics.fillRect(px + 6, py + smelterH - 14, (smelterW - 12) * progress, 4);
+                }
+                
+                // Storage indicators
+                if (b.sandStored > 0) {
+                    const sandBar = Math.min(1, b.sandStored / 10);
+                    graphics.fillStyle(0xcccc66);
+                    graphics.fillRect(px + 4, py + 24, 8 * sandBar, 3);
+                }
+                if (b.coalStored > 0) {
+                    const coalBar = Math.min(1, b.coalStored / 10);
+                    graphics.fillStyle(0x333333);
+                    graphics.fillRect(px + smelterW - 12, py + 24, 8 * coalBar, 3);
+                }
 
             } else if (b.type === 'alloy-factory') {
                 // 2x2 Alloy Factory - highly visible industrial building
@@ -5640,7 +5839,7 @@
                     // Connect to power sources, other power nodes, and all power consumers
                     const isPowerSource = other.type === 'generator' || other.type === 'thermal-generator';
                     const isPowerNode = other.type === 'power-node' || other.type === 'large-power-node';
-                    const isPowerConsumer = other.type === 'laser' || other.type === 'alloy-factory' || other.type === 'repair' || other.type === 'miner-constructor';
+                    const isPowerConsumer = other.type === 'laser' || other.type === 'alloy-factory' || other.type === 'silicon-smelter' || other.type === 'repair' || other.type === 'miner-constructor';
 
                     if (!isPowerSource && !isPowerNode && !isPowerConsumer) return;
 
@@ -5719,7 +5918,7 @@
                     if (other === b) return;
                     const isPowerSource = other.type === 'generator' || other.type === 'thermal-generator';
                     const isPowerNode = other.type === 'power-node' || other.type === 'large-power-node';
-                    const isPowerConsumer = other.type === 'laser' || other.type === 'alloy-factory' || other.type === 'repair' || other.type === 'miner-constructor';
+                    const isPowerConsumer = other.type === 'laser' || other.type === 'alloy-factory' || other.type === 'silicon-smelter' || other.type === 'repair' || other.type === 'miner-constructor';
 
                     if (!isPowerSource && !isPowerNode && !isPowerConsumer) return;
 

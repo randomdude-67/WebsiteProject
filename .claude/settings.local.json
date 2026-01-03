@@ -4,7 +4,10 @@
       "Bash(gh auth:*)",
       "Bash(pm status:*)",
       "Bash(pm start:*)",
-      "Bash(pm search:*)"
+      "Bash(pm search:*)",
+      "Bash(ls:*)",
+      "Bash(pm reindex:*)",
+      "Bash(pm stop:*)"
     ]
   }
 }
