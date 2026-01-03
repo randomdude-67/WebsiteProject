@@ -1734,6 +1734,10 @@
         function produceTick() {
             buildings.forEach(b => {
                 if ((b.type === 'drill' || b.type === 'pneumatic-drill' || b.type === 'alloy-drill') && b.ore) {
+                    // Safety check: normal drills cannot mine titanium
+                    if (b.type === 'drill' && b.ore === 'titanium') {
+                        return; // Skip - normal drill can't mine titanium
+                    }
                     const data = BUILDINGS[b.type];
                     // Speed bonus: each ore tile adds 25% speed (1 tile = 1x, 2 tiles = 1.25x, 3 tiles = 1.5x, 4 tiles = 1.75x)
                     const oreCount = b.oreCount || 1;
@@ -1889,8 +1893,8 @@
                 }
             }
 
-            // Graphite press crafting (no power required)
-            buildings.filter(b => b.type === 'graphite-press').forEach(press => {
+            // Graphite press crafting (no power required) - only process master buildings, not tile refs
+            buildings.filter(b => b.type === 'graphite-press' && !b.isTileRef).forEach(press => {
                 if ((press.coalStored || 0) >= 2) {
                     press.craftProgress = (press.craftProgress || 0) + 500; // Progress per tick (500ms)
                     if (press.craftProgress >= BUILDINGS['graphite-press'].craftTime) {
@@ -1902,8 +1906,8 @@
                 }
             });
 
-            // Alloy factory crafting (slower when low power)
-            buildings.filter(b => b.type === 'alloy-factory').forEach(factory => {
+            // Alloy factory crafting (slower when low power) - only process master buildings, not tile refs
+            buildings.filter(b => b.type === 'alloy-factory' && !b.isTileRef).forEach(factory => {
                 if (factory.powered && (factory.leadStored || 0) >= 1 && (factory.titaniumStored || 0) >= 1) {
                     const progressRate = 500 * (factory.powerEfficiency || 0); // Slowed by power efficiency
                     factory.craftProgress = (factory.craftProgress || 0) + progressRate;
@@ -1937,59 +1941,85 @@
             powerGrid.consumption = totalConsumption;
         }
 
-        function spawnMiner(constructor) {
-            // Determine which ore to target based on current resources
-            // Target lead if more copper, target copper if more lead
-            const targetOreType = (resources.copper || 0) > (resources.lead || 0) ? 'lead' : 'copper';
-            
-            // Find nearest ore of target type
-            let nearestOre = null;
-            let nearestDist = Infinity;
-            const constructorCenterX = constructor.x + 1;
-            const constructorCenterY = constructor.y + 1;
-            
+        // Track which ore nodes are being mined by how many drones (for slot-based pathfinding)
+        let oreNodeMiners = {}; // Key: "x,y", Value: array of miner indices
+        const MAX_MINERS_PER_NODE = 3; // Maximum drones that can mine a single ore node
+
+        function getOreNodeKey(x, y) {
+            return `${x},${y}`;
+        }
+
+        function countMinersAtNode(x, y) {
+            const key = getOreNodeKey(x, y);
+            return miners.filter(m => m.targetX === x && m.targetY === y && m.state !== 'returning').length;
+        }
+
+        function findBestOreNode(startX, startY, targetOreType) {
+            // Find ore nodes with available slots (fewer than MAX_MINERS_PER_NODE drones)
+            let bestOre = null;
+            let bestScore = Infinity;
+
             for (let y = 0; y < MAP_HEIGHT; y++) {
                 for (let x = 0; x < MAP_WIDTH; x++) {
                     const ore = oreMap[y] && oreMap[y][x];
                     if (ore === targetOreType) {
-                        const dist = Math.sqrt((x - constructorCenterX) ** 2 + (y - constructorCenterY) ** 2);
-                        if (dist < nearestDist) {
-                            nearestDist = dist;
-                            nearestOre = { x, y, type: ore };
-                        }
-                    }
-                }
-            }
-            
-            // If no ore of target type found, try the other type
-            if (!nearestOre) {
-                const fallbackType = targetOreType === 'copper' ? 'lead' : 'copper';
-                for (let y = 0; y < MAP_HEIGHT; y++) {
-                    for (let x = 0; x < MAP_WIDTH; x++) {
-                        const ore = oreMap[y] && oreMap[y][x];
-                        if (ore === fallbackType) {
-                            const dist = Math.sqrt((x - constructorCenterX) ** 2 + (y - constructorCenterY) ** 2);
-                            if (dist < nearestDist) {
-                                nearestDist = dist;
-                                nearestOre = { x, y, type: ore };
+                        const minerCount = countMinersAtNode(x, y);
+                        if (minerCount < MAX_MINERS_PER_NODE) {
+                            const dist = Math.sqrt((x - startX) ** 2 + (y - startY) ** 2);
+                            // Score combines distance and crowding (prefer less crowded nodes)
+                            const score = dist + minerCount * 20;
+                            if (score < bestScore) {
+                                bestScore = score;
+                                bestOre = { x, y, type: ore };
                             }
                         }
                     }
                 }
             }
-            
-            if (nearestOre) {
+            return bestOre;
+        }
+
+        function spawnMiner(constructor) {
+            // Determine which ore to target based on current resources
+            // Target lead if more copper, target copper if more lead
+            const targetOreType = (resources.copper || 0) > (resources.lead || 0) ? 'lead' : 'copper';
+
+            // Get spawn position based on constructor rotation (orientation)
+            const dir = getDirection(constructor.rotation);
+            const constructorCenterX = constructor.x + 1;
+            const constructorCenterY = constructor.y + 1;
+
+            // Spawn drone at the edge of the constructor in the rotation direction
+            const spawnX = (constructorCenterX + dir.x * 1.5) * TILE_SIZE;
+            const spawnY = (constructorCenterY + dir.y * 1.5) * TILE_SIZE;
+
+            // Find ore node with available slots
+            let targetOre = findBestOreNode(constructorCenterX, constructorCenterY, targetOreType);
+
+            // If no ore of target type found with slots, try the other type
+            if (!targetOre) {
+                const fallbackType = targetOreType === 'copper' ? 'lead' : 'copper';
+                targetOre = findBestOreNode(constructorCenterX, constructorCenterY, fallbackType);
+            }
+
+            if (targetOre) {
                 miners.push({
-                    x: (constructor.x + 1) * TILE_SIZE,
-                    y: (constructor.y + 1) * TILE_SIZE,
-                    targetX: nearestOre.x,
-                    targetY: nearestOre.y,
-                    oreType: nearestOre.type,
+                    x: spawnX,
+                    y: spawnY,
+                    targetX: targetOre.x,
+                    targetY: targetOre.y,
+                    oreType: targetOre.type,
                     miningCooldown: 0,
                     health: 50,
-                    maxHealth: 50
+                    maxHealth: 50,
+                    // Inventory system
+                    inventory: 0,
+                    maxInventory: 30,
+                    state: 'mining', // 'mining' or 'returning'
+                    homeX: constructorCenterX, // Remember where we came from
+                    homeY: constructorCenterY
                 });
-                spawnParticles((constructor.x + 1) * TILE_SIZE, (constructor.y + 1) * TILE_SIZE, 0x44ff44, 8);
+                spawnParticles(spawnX, spawnY, 0x44ff44, 8);
             }
         }
 
@@ -2835,9 +2865,9 @@
                 }
             }
 
-            // Camera follows player
-            const viewWidth = window.innerWidth;
-            const viewHeight = window.innerHeight;
+            // Camera follows player (adjusted for zoom)
+            const viewWidth = window.innerWidth / zoom;
+            const viewHeight = window.innerHeight / zoom;
             camera.x = player.x - viewWidth / 2;
             camera.y = player.y - viewHeight / 2;
 
@@ -2846,6 +2876,10 @@
             camera.y = Math.max(0, Math.min(MAP_HEIGHT * TILE_SIZE - viewHeight, camera.y));
 
             graphics.clear();
+
+            // Apply zoom - scale graphics and reset position
+            graphics.setScale(zoom);
+            graphics.setPosition(0, 0);
 
             // Calculate visible tile range (adjusted for zoom)
             const startTileX = Math.max(0, Math.floor(camera.x / TILE_SIZE) - 1);
@@ -3073,23 +3107,41 @@
             // Update items smoothly every frame
             updateItems();
 
-            // Update miners with intelligent pathfinding
+            // Update miners with intelligent pathfinding and inventory system
             for (let i = miners.length - 1; i >= 0; i--) {
                 const miner = miners[i];
-                const targetWorldX = miner.targetX * TILE_SIZE + TILE_SIZE / 2;
-                const targetWorldY = miner.targetY * TILE_SIZE + TILE_SIZE / 2;
+
+                // Initialize state if not set (for backwards compatibility)
+                if (!miner.state) miner.state = 'mining';
+                if (!miner.inventory) miner.inventory = 0;
+                if (!miner.maxInventory) miner.maxInventory = 30;
+
+                // Find the core for returning
+                const core = buildings.find(b => b.type === 'core');
+
+                // Determine target based on state
+                let targetWorldX, targetWorldY;
+                if (miner.state === 'returning' && core) {
+                    // Return to core center
+                    targetWorldX = (core.x + 1.5) * TILE_SIZE;
+                    targetWorldY = (core.y + 1.5) * TILE_SIZE;
+                } else {
+                    // Go to ore
+                    targetWorldX = miner.targetX * TILE_SIZE + TILE_SIZE / 2;
+                    targetWorldY = miner.targetY * TILE_SIZE + TILE_SIZE / 2;
+                }
 
                 // Move towards target but stop at a distance to show laser better
                 const dx = targetWorldX - miner.x;
                 const dy = targetWorldY - miner.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                const miningDistance = TILE_SIZE * 1.5; // Stop 1.5 tiles away
+                const interactionDistance = miner.state === 'returning' ? TILE_SIZE * 2 : TILE_SIZE * 1.5;
                 const minerRadius = 14; // Collision radius for miners
-                const avoidanceRadius = minerRadius * 3; // Detection radius for avoidance
+                const avoidanceRadius = minerRadius * 4; // Increased detection radius for better avoidance
 
-                if (dist > miningDistance) {
+                if (dist > interactionDistance) {
                     // Calculate base movement direction
-                    const speed = 2.5;
+                    const speed = miner.state === 'returning' ? 3.5 : 2.5; // Faster when returning
                     let moveX = (dx / dist) * speed;
                     let moveY = (dy / dist) * speed;
 
@@ -3110,19 +3162,17 @@
                             nearbyMinerCount++;
                             // Stronger avoidance when closer
                             const avoidStrength = 1 - (oDist / avoidanceRadius);
-                            const avoidForce = avoidStrength * avoidStrength * 3;
+                            const avoidForce = avoidStrength * avoidStrength * 4; // Increased force
                             avoidX += (odx / oDist) * avoidForce;
                             avoidY += (ody / oDist) * avoidForce;
                         }
                     }
 
-                    // Apply avoidance steering
+                    // Apply avoidance steering with improved algorithm
                     if (nearbyMinerCount > 0) {
-                        // Normalize and blend avoidance with target direction
                         const avoidMag = Math.sqrt(avoidX * avoidX + avoidY * avoidY);
                         if (avoidMag > 0) {
-                            // Calculate perpendicular direction for smoother pathfinding
-                            // Choose the perpendicular that's closer to target
+                            // Calculate two perpendicular directions
                             const perpX1 = -moveY;
                             const perpY1 = moveX;
                             const perpX2 = moveY;
@@ -3134,15 +3184,19 @@
 
                             let steerX, steerY;
                             if (dot1 > dot2) {
-                                steerX = perpX1 * 0.5 + avoidX / avoidMag * 0.5;
-                                steerY = perpY1 * 0.5 + avoidY / avoidMag * 0.5;
+                                steerX = perpX1 * 0.6 + avoidX / avoidMag * 0.4;
+                                steerY = perpY1 * 0.6 + avoidY / avoidMag * 0.4;
                             } else {
-                                steerX = perpX2 * 0.5 + avoidX / avoidMag * 0.5;
-                                steerY = perpY2 * 0.5 + avoidY / avoidMag * 0.5;
+                                steerX = perpX2 * 0.6 + avoidX / avoidMag * 0.4;
+                                steerY = perpY2 * 0.6 + avoidY / avoidMag * 0.4;
                             }
 
                             // Blend original movement with steering based on urgency
-                            const urgency = Math.min(1, nearbyMinerCount * 0.4);
+                            // Miners at same ore node should steer more aggressively
+                            const sameTargetCount = miners.filter((m, idx) =>
+                                idx !== i && m.targetX === miner.targetX && m.targetY === miner.targetY && m.state === 'mining'
+                            ).length;
+                            const urgency = Math.min(0.9, nearbyMinerCount * 0.3 + sameTargetCount * 0.2);
                             moveX = moveX * (1 - urgency) + steerX * speed * urgency;
                             moveY = moveY * (1 - urgency) + steerY * speed * urgency;
                         }
@@ -3152,7 +3206,7 @@
                     let newX = miner.x + moveX;
                     let newY = miner.y + moveY;
 
-                    // Hard collision resolution - ensure no overlap
+                    // Hard collision resolution - ensure no overlap with increased push
                     for (let j = 0; j < miners.length; j++) {
                         if (i === j) continue;
                         const other = miners[j];
@@ -3160,17 +3214,19 @@
                         const ody = newY - other.y;
                         const oDist = Math.sqrt(odx * odx + ody * ody);
 
-                        if (oDist < minerRadius * 2) {
-                            // Collision! Push apart
-                            const overlap = minerRadius * 2 - oDist;
+                        if (oDist < minerRadius * 2.5) {
+                            // Collision! Push apart more aggressively
+                            const overlap = minerRadius * 2.5 - oDist;
                             if (oDist > 0.1) {
-                                newX += (odx / oDist) * overlap * 0.6;
-                                newY += (ody / oDist) * overlap * 0.6;
+                                // Add some randomness to break deadlocks
+                                const jitter = (Math.random() - 0.5) * 0.3;
+                                newX += (odx / oDist + jitter) * overlap * 0.7;
+                                newY += (ody / oDist + jitter) * overlap * 0.7;
                             } else {
                                 // Nearly overlapping, push in random direction
                                 const randAngle = Math.random() * Math.PI * 2;
-                                newX += Math.cos(randAngle) * overlap;
-                                newY += Math.sin(randAngle) * overlap;
+                                newX += Math.cos(randAngle) * overlap * 1.5;
+                                newY += Math.sin(randAngle) * overlap * 1.5;
                             }
                         }
                     }
@@ -3186,14 +3242,51 @@
                     miner.x = newX;
                     miner.y = newY;
                 } else {
-                    // At mining distance - mine it
+                    // At target - either mining or depositing
                     miner.isMoving = false;
-                    miner.miningCooldown -= delta;
-                    if (miner.miningCooldown <= 0) {
-                        miner.miningCooldown = 1000; // Mine every 1 second
-                        resources[miner.oreType] = (resources[miner.oreType] || 0) + 1;
-                        updateResourceUI();
-                        spawnParticles(targetWorldX, targetWorldY, getOreColor(miner.oreType), 2);
+
+                    if (miner.state === 'returning' && core) {
+                        // Deposit resources to core
+                        if (miner.inventory > 0) {
+                            resources[miner.oreType] = (resources[miner.oreType] || 0) + miner.inventory;
+                            updateResourceUI();
+                            spawnParticles(miner.x, miner.y, getOreColor(miner.oreType), 5);
+                            miner.inventory = 0;
+                        }
+
+                        // Decide what to mine next based on current resource balance
+                        const newTargetType = (resources.copper || 0) > (resources.lead || 0) ? 'lead' : 'copper';
+                        const newTarget = findBestOreNode(miner.x / TILE_SIZE, miner.y / TILE_SIZE, newTargetType);
+
+                        if (newTarget) {
+                            miner.targetX = newTarget.x;
+                            miner.targetY = newTarget.y;
+                            miner.oreType = newTarget.type;
+                        } else {
+                            // Try the other ore type
+                            const fallbackType = newTargetType === 'copper' ? 'lead' : 'copper';
+                            const fallbackTarget = findBestOreNode(miner.x / TILE_SIZE, miner.y / TILE_SIZE, fallbackType);
+                            if (fallbackTarget) {
+                                miner.targetX = fallbackTarget.x;
+                                miner.targetY = fallbackTarget.y;
+                                miner.oreType = fallbackTarget.type;
+                            }
+                        }
+
+                        miner.state = 'mining';
+                    } else {
+                        // Mining ore
+                        miner.miningCooldown -= delta;
+                        if (miner.miningCooldown <= 0) {
+                            miner.miningCooldown = 800; // Mine every 0.8 seconds
+                            miner.inventory++;
+                            spawnParticles(targetWorldX, targetWorldY, getOreColor(miner.oreType), 2);
+
+                            // Check if inventory is full
+                            if (miner.inventory >= miner.maxInventory) {
+                                miner.state = 'returning';
+                            }
+                        }
                     }
                 }
 
@@ -3238,14 +3331,23 @@
                 if (screenX > -20 && screenX < window.innerWidth + 20 &&
                     screenY > -20 && screenY < window.innerHeight + 20) {
 
-                    // Draw green mining laser if miner is at mining distance
-                    const targetWorldX = miner.targetX * TILE_SIZE + TILE_SIZE / 2;
-                    const targetWorldY = miner.targetY * TILE_SIZE + TILE_SIZE / 2;
-                    const distToTarget = Math.sqrt((miner.x - targetWorldX)**2 + (miner.y - targetWorldY)**2);
-                    const miningDistance = TILE_SIZE * 1.5;
+                    const isReturning = miner.state === 'returning';
+                    const core = buildings.find(b => b.type === 'core');
 
-                    if (distToTarget <= miningDistance) {
-                        // Miner is at target, draw green laser (wider and brighter)
+                    // Determine target based on state
+                    let targetWorldX, targetWorldY;
+                    if (isReturning && core) {
+                        targetWorldX = (core.x + 1.5) * TILE_SIZE;
+                        targetWorldY = (core.y + 1.5) * TILE_SIZE;
+                    } else {
+                        targetWorldX = miner.targetX * TILE_SIZE + TILE_SIZE / 2;
+                        targetWorldY = miner.targetY * TILE_SIZE + TILE_SIZE / 2;
+                    }
+                    const distToTarget = Math.sqrt((miner.x - targetWorldX)**2 + (miner.y - targetWorldY)**2);
+                    const interactionDistance = isReturning ? TILE_SIZE * 2 : TILE_SIZE * 1.5;
+
+                    // Draw mining laser when at target (only when mining, not returning)
+                    if (!isReturning && distToTarget <= interactionDistance) {
                         const targetScreenX = targetWorldX - camera.x;
                         const targetScreenY = targetWorldY - camera.y;
                         const laserPulse = Math.sin(Date.now() / 80) * 0.3 + 0.7;
@@ -3278,17 +3380,21 @@
                     graphics.fillEllipse(screenX + 2, screenY + 12, 10, 4);
 
                     // Miner body (quadcopter drone design)
-                    // Main body - metallic green
-                    graphics.fillStyle(0x3a8a3a);
+                    // Main body color changes based on state - yellow when returning
+                    const bodyColor = isReturning ? 0x8a8a3a : 0x3a8a3a;
+                    const highlightColor = isReturning ? 0xaaaa5a : 0x5aaa5a;
+                    const coreColor = isReturning ? 0xffff88 : 0x88ff88;
+
+                    graphics.fillStyle(bodyColor);
                     graphics.fillRoundedRect(screenX - 7, screenY - 5, 14, 10, 3);
 
                     // Body highlight
-                    graphics.fillStyle(0x5aaa5a, 0.6);
+                    graphics.fillStyle(highlightColor, 0.6);
                     graphics.fillRect(screenX - 5, screenY - 4, 10, 3);
 
                     // Central core light
                     const corePulse = Math.sin(Date.now() / 200) * 0.2 + 0.8;
-                    graphics.fillStyle(0x88ff88, corePulse);
+                    graphics.fillStyle(coreColor, corePulse);
                     graphics.fillCircle(screenX, screenY, 3);
 
                     // Propeller arms
@@ -3338,7 +3444,7 @@
                     );
 
                     // Mining laser emitter (points toward target when mining)
-                    if (distToTarget <= miningDistance) {
+                    if (!isReturning && distToTarget <= interactionDistance) {
                         const aimAngle = Math.atan2(targetWorldY - miner.y, targetWorldX - miner.x);
                         graphics.fillStyle(0x44ff44);
                         graphics.fillCircle(
@@ -3346,6 +3452,17 @@
                             screenY + Math.sin(aimAngle) * 6,
                             2
                         );
+                    }
+
+                    // Cargo indicator (show ore type color when carrying resources)
+                    if (miner.inventory && miner.inventory > 0) {
+                        const oreColor = getOreColor(miner.oreType);
+                        graphics.fillStyle(oreColor, 0.9);
+                        graphics.fillCircle(screenX, screenY + 2, 4);
+                        // Show fill level with size
+                        const fillPct = miner.inventory / miner.maxInventory;
+                        graphics.fillStyle(0xffffff, 0.5);
+                        graphics.fillCircle(screenX, screenY + 2, 2 * fillPct);
                     }
 
                     // Health bar with border
@@ -3357,6 +3474,15 @@
                     const healthColor = healthPct > 0.6 ? 0x4CAF50 : (healthPct > 0.3 ? 0xffaa00 : 0xff4444);
                     graphics.fillStyle(healthColor);
                     graphics.fillRect(screenX - 10, screenY + 15, 20 * healthPct, 3);
+
+                    // Inventory bar (below health bar)
+                    const invPct = (miner.inventory || 0) / (miner.maxInventory || 30);
+                    graphics.fillStyle(0x222222);
+                    graphics.fillRect(screenX - 11, screenY + 20, 22, 4);
+                    graphics.fillStyle(0x333333);
+                    graphics.fillRect(screenX - 10, screenY + 21, 20, 2);
+                    graphics.fillStyle(getOreColor(miner.oreType));
+                    graphics.fillRect(screenX - 10, screenY + 21, 20 * invPct, 2);
                 }
             });
 
@@ -5178,45 +5304,89 @@
                 }
 
             } else if (b.type === 'payload-conveyor') {
-                // Payload conveyor - wider, reinforced conveyor for drones
-                graphics.fillStyle(0x2a5c7b);
-                graphics.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+                // Payload conveyor - 2x2 heavy-duty conveyor for drones
+                const convW = TILE_SIZE * 2;
+                const convH = TILE_SIZE * 2;
+
+                // Base platform
+                graphics.fillStyle(0x1a4c6b);
+                graphics.fillRoundedRect(px, py, convW, convH, 4);
 
                 const dir = getDirection(b.rotation);
-                const beltPhase = (Date.now() / 200) % 1; // Slower movement
+                const beltPhase = (Date.now() / 150) % 1; // Slower movement
 
                 // Heavy-duty belt surface
-                graphics.fillStyle(0x4a7c9b);
-                graphics.fillRect(px + 1, py + 1, TILE_SIZE - 2, TILE_SIZE - 2);
+                graphics.fillStyle(0x2a5c7b);
+                graphics.fillRect(px + 3, py + 3, convW - 6, convH - 6);
 
-                // Reinforced rails
+                // Inner belt area
+                graphics.fillStyle(0x4a7c9b);
+                graphics.fillRect(px + 6, py + 6, convW - 12, convH - 12);
+
+                // Reinforced corner brackets
                 graphics.fillStyle(0x5a8cab);
+                // Top-left bracket
+                graphics.fillRect(px + 2, py + 2, 12, 4);
+                graphics.fillRect(px + 2, py + 2, 4, 12);
+                // Top-right bracket
+                graphics.fillRect(px + convW - 14, py + 2, 12, 4);
+                graphics.fillRect(px + convW - 6, py + 2, 4, 12);
+                // Bottom-left bracket
+                graphics.fillRect(px + 2, py + convH - 6, 12, 4);
+                graphics.fillRect(px + 2, py + convH - 14, 4, 12);
+                // Bottom-right bracket
+                graphics.fillRect(px + convW - 14, py + convH - 6, 12, 4);
+                graphics.fillRect(px + convW - 6, py + convH - 14, 4, 12);
+
+                // Directional rails based on rotation
+                graphics.fillStyle(0x6a9cbb);
                 if (dir.x !== 0) {
-                    graphics.fillRect(px, py + 2, TILE_SIZE, 4);
-                    graphics.fillRect(px, py + TILE_SIZE - 6, TILE_SIZE, 4);
+                    // Horizontal movement - draw horizontal rails
+                    graphics.fillRect(px + 8, py + 8, convW - 16, 6);
+                    graphics.fillRect(px + 8, py + convH - 14, convW - 16, 6);
                 } else {
-                    graphics.fillRect(px + 2, py, 4, TILE_SIZE);
-                    graphics.fillRect(px + TILE_SIZE - 6, py, 4, TILE_SIZE);
+                    // Vertical movement - draw vertical rails
+                    graphics.fillRect(px + 8, py + 8, 6, convH - 16);
+                    graphics.fillRect(px + convW - 14, py + 8, 6, convH - 16);
                 }
 
-                // Moving grid pattern to show it's active
-                for (let i = 0; i < 3; i++) {
-                    const progress = ((i / 3 + beltPhase) % 1);
-                    graphics.fillStyle(0x6a9cbb, 0.4);
+                // Moving chevron pattern to show direction
+                for (let i = 0; i < 4; i++) {
+                    const progress = ((i / 4 + beltPhase) % 1);
+                    graphics.fillStyle(0x7aaccc, 0.5);
 
                     if (dir.x !== 0) {
-                        const lineX = px + progress * TILE_SIZE;
-                        graphics.fillRect(lineX, py + 4, 2, TILE_SIZE - 8);
+                        // Horizontal chevrons
+                        const lineX = px + 10 + progress * (convW - 20);
+                        const chevronDir = dir.x > 0 ? 1 : -1;
+                        graphics.lineStyle(2, 0x7aaccc, 0.6);
+                        graphics.lineBetween(lineX, py + convH/2 - 10, lineX + chevronDir * 6, py + convH/2);
+                        graphics.lineBetween(lineX, py + convH/2 + 10, lineX + chevronDir * 6, py + convH/2);
                     } else {
-                        const lineY = py + progress * TILE_SIZE;
-                        graphics.fillRect(px + 4, lineY, TILE_SIZE - 8, 2);
+                        // Vertical chevrons
+                        const lineY = py + 10 + progress * (convH - 20);
+                        const chevronDir = dir.y > 0 ? 1 : -1;
+                        graphics.lineStyle(2, 0x7aaccc, 0.6);
+                        graphics.lineBetween(px + convW/2 - 10, lineY, px + convW/2, lineY + chevronDir * 6);
+                        graphics.lineBetween(px + convW/2 + 10, lineY, px + convW/2, lineY + chevronDir * 6);
                     }
                 }
 
+                // Central platform for drone
+                graphics.fillStyle(0x3a6c8b);
+                graphics.fillCircle(px + convW/2, py + convH/2, 14);
+                graphics.fillStyle(0x4a7c9b);
+                graphics.fillCircle(px + convW/2, py + convH/2, 10);
+
+                // Direction arrow in center
+                drawArrow(px + convW/2, py + convH/2, b.rotation, 0x8acccf);
+
                 // Show if it has a miner loaded
                 if (b.payloadMiner) {
-                    graphics.fillStyle(0x4CAF50, 0.8);
-                    graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 6);
+                    graphics.fillStyle(0x4CAF50, 0.9);
+                    graphics.fillCircle(px + convW/2, py + convH/2, 12);
+                    graphics.fillStyle(0x66ff66, 0.7);
+                    graphics.fillCircle(px + convW/2, py + convH/2, 6);
                 }
 
             } else if (b.type === 'router') {
