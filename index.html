@@ -164,8 +164,12 @@
             box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
         }
 
+        .build-btn:disabled,
+        .build-btn.unaffordable {
+            opacity: 0.5;
+        }
+
         .build-btn:disabled {
-            opacity: 0.4;
             cursor: not-allowed;
         }
 
@@ -212,36 +216,40 @@
             position: fixed;
             bottom: 130px;
             right: 170px;
-            background: rgba(0,0,0,0.95);
+            background: linear-gradient(135deg, rgba(22, 33, 62, 0.98), rgba(30, 45, 75, 0.98));
             color: white;
-            padding: 12px 16px;
+            padding: 14px 18px;
             border-radius: 8px;
             font-size: 12px;
             pointer-events: none;
             z-index: 1000;
-            min-width: 180px;
-            max-width: 280px;
+            min-width: 240px;
+            max-width: 320px;
             border: 2px solid #4CAF50;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1);
             display: none;
         }
 
         .tooltip-title {
             font-weight: bold;
-            font-size: 14px;
+            font-size: 15px;
             color: #4CAF50;
-            margin-bottom: 8px;
-            border-bottom: 1px solid #333;
+            margin-bottom: 10px;
+            border-bottom: 1px solid rgba(76, 175, 80, 0.3);
             padding-bottom: 6px;
+            text-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
         }
 
         .tooltip-stat {
-            margin: 4px 0;
-            color: #ccc;
+            margin: 6px 0;
+            color: #ddd;
+            line-height: 1.5;
         }
 
         .tooltip-stat-label {
-            color: #888;
+            color: #4CAF50;
+            font-weight: 600;
+            margin-right: 6px;
         }
 
         /* Info panel */
@@ -256,6 +264,31 @@
             font-size: 10px;
             z-index: 90;
             max-width: 180px;
+            transition: all 0.3s ease;
+        }
+
+        #info-panel.collapsed {
+            width: 80px;
+            height: 30px;
+            overflow: hidden;
+            padding: 5px 10px;
+        }
+
+        #info-panel.collapsed .panel-content {
+            display: none;
+        }
+
+        #panel-toggle {
+            cursor: pointer;
+            color: #4CAF50;
+            font-weight: bold;
+            user-select: none;
+            display: inline-block;
+            margin-bottom: 5px;
+        }
+
+        #panel-toggle:hover {
+            color: #66dd66;
         }
 
         #info-panel b {
@@ -268,11 +301,11 @@
     <div id="resource-bar">
         <div class="resource-item">
             <div class="resource-icon" style="background: #d4a574;"></div>
-            <span class="resource-count" id="copper-count">100</span>
+            <span class="resource-count" id="copper-count">20</span>
         </div>
         <div class="resource-item">
             <div class="resource-icon" style="background: #7799aa;"></div>
-            <span class="resource-count" id="lead-count">50</span>
+            <span class="resource-count" id="lead-count">20</span>
         </div>
         <div class="resource-item">
             <div class="resource-icon" style="background: #444;"></div>
@@ -283,8 +316,16 @@
             <span class="resource-count" id="titanium-count">0</span>
         </div>
         <div class="resource-item">
+            <div class="resource-icon" style="background: #2a2a2a;"></div>
+            <span class="resource-count" id="graphite-count">0</span>
+        </div>
+        <div class="resource-item">
             <div class="resource-icon" style="background: linear-gradient(135deg, #d4a574, #7799aa);"></div>
             <span class="resource-count" id="alloy-count">0</span>
+        </div>
+        <div class="resource-item">
+            <div class="resource-icon" style="background: #c9b592;"></div>
+            <span class="resource-count" id="sand-count">0</span>
         </div>
 
         <div id="wave-display">
@@ -295,6 +336,7 @@
                 <div id="player-health-fill" style="width: 100%"></div>
                 <span id="player-health-text">Ship: 100%</span>
             </div>
+            <button id="debug-btn" style="margin-left: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">∞ Resources</button>
         </div>
     </div>
 
@@ -315,20 +357,27 @@
 
     <!-- Info Panel -->
     <div id="info-panel">
-        <b>Controls:</b><br>
-        WASD - Move ship<br>
-        Click - Place building<br>
-        Drag - Place multiple<br>
-        Right-click - Delete<br>
-        R - Rotate<br>
-        Space - Start wave<br>
-        <br>
-        <b>Tips:</b><br>
-        Drills mine ore deposits<br>
-        Conveyors transport to core<br>
-        Duo uses copper, Scatter uses lead<br>
-        Feed ammo via conveyors!<br>
-        Arc turrets need power
+        <div id="panel-toggle" onclick="document.getElementById('info-panel').classList.toggle('collapsed')">
+            📖 Tutorial
+        </div>
+        <div class="panel-content">
+            <b>Controls:</b><br>
+            WASD - Move ship<br>
+            Click - Place/Mine<br>
+            Middle-click - Pick building<br>
+            Drag - Place multiple<br>
+            Right-click - Delete<br>
+            R/Scroll - Rotate<br>
+            Space - Start wave<br>
+            <br>
+            <b>Tips:</b><br>
+            Click with no building selected to mine copper/lead<br>
+            Drills mine ore deposits<br>
+            Conveyors transport to core<br>
+            Duo uses copper, Scatter uses lead<br>
+            Feed ammo via conveyors!<br>
+            Arc turrets need power
+        </div>
     </div>
 
     <div id="tooltip" class="tooltip"></div>
@@ -338,8 +387,8 @@
     <script>
         // Game Constants
         const TILE_SIZE = 32;
-        const MAP_WIDTH = 60;
-        const MAP_HEIGHT = 45;
+        const MAP_WIDTH = 100;
+        const MAP_HEIGHT = 75;
 
         // Player ship
         let player = {
@@ -359,11 +408,13 @@
 
         // Resources
         let resources = {
-            copper: 100,
-            lead: 50,
+            copper: 20,
+            lead: 20,
             coal: 0,
             titanium: 0,
-            alloy: 0
+            graphite: 0,
+            alloy: 0,
+            sand: 0
         };
 
         // Terrain types
@@ -378,24 +429,40 @@
         // Building definitions with categories
         const BUILDINGS = {
             drill: {
-                category: 'production', cost: { copper: 8 }, health: 40,
+                category: 'production', cost: { copper: 12 }, health: 40,
                 icon: '⛏', name: 'Drill', hotkey: '1',
-                desc: 'Mines ore deposits', mineSpeed: 1
+                desc: 'Mines ore deposits', mineSpeed: 1,
+                width: 2, height: 2
             },
             'pneumatic-drill': {
-                category: 'production', cost: { copper: 15, lead: 10 }, health: 50,
+                category: 'production', cost: { copper: 45, graphite: 15 }, health: 50,
                 icon: '⚙', name: 'P-Drill', hotkey: '2',
-                desc: 'Fast mining 2x speed', mineSpeed: 2
+                desc: 'Fast mining 2x speed', mineSpeed: 2,
+                width: 2, height: 2
             },
             'alloy-drill': {
-                category: 'production', cost: { alloy: 15, titanium: 10 }, health: 80,
+                category: 'production', cost: { alloy: 45, titanium: 30 }, health: 80,
                 icon: '🔩', name: 'A-Drill', hotkey: null,
-                desc: 'Alloy drill 4x speed', mineSpeed: 4
+                desc: 'Alloy drill 4x speed', mineSpeed: 4,
+                width: 2, height: 2
+            },
+            'graphite-press': {
+                category: 'production', cost: { copper: 60, lead: 40 }, health: 60,
+                icon: '⬛', name: 'Graphite Press', hotkey: null,
+                desc: 'Compresses 2 coal into 1 graphite', craftTime: 2000,
+                width: 2, height: 2
             },
             'alloy-factory': {
-                category: 'production', cost: { copper: 30, lead: 30 }, health: 60,
+                category: 'production', cost: { copper: 90, lead: 90 }, health: 60,
                 icon: '🏭', name: 'Alloy Factory', hotkey: null,
-                desc: 'Combines copper+lead into alloy (needs power)', craftTime: 3000, powerUse: 3
+                desc: 'Combines lead+titanium into alloy (needs power)', craftTime: 3000, powerUse: 3,
+                width: 2, height: 2
+            },
+            'miner-constructor': {
+                category: 'production', cost: { lead: 120, titanium: 120 }, health: 100,
+                icon: '🏗️', name: 'Miner Constructor', hotkey: null,
+                desc: 'Builds mining drones (50 lead+titanium, 60s)', craftTime: 60000,
+                width: 2, height: 2
             },
             conveyor: {
                 category: 'transport', cost: { copper: 1 }, health: 20,
@@ -403,74 +470,85 @@
                 desc: 'Moves items in one direction'
             },
             'alloy-conveyor': {
-                category: 'transport', cost: { alloy: 1 }, health: 40,
+                category: 'transport', cost: { alloy: 3 }, health: 40,
                 icon: '⇒', name: 'A-Conveyor', hotkey: null,
                 desc: 'Fast alloy conveyor 2x speed', speedMult: 2
             },
             router: {
-                category: 'transport', cost: { copper: 5 }, health: 30,
+                category: 'transport', cost: { copper: 15 }, health: 30,
                 icon: '✚', name: 'Router', hotkey: '4',
                 desc: 'Splits items 3 ways'
             },
             junction: {
-                category: 'transport', cost: { copper: 3, lead: 3 }, health: 25,
+                category: 'transport', cost: { copper: 9, lead: 9 }, health: 25,
                 icon: '╋', name: 'Junction', hotkey: '5',
                 desc: 'Items pass through'
             },
             generator: {
-                category: 'power', cost: { copper: 20, lead: 10 }, health: 60,
+                category: 'power', cost: { copper: 60, lead: 30 }, health: 60,
                 icon: '🔥', name: 'Generator', hotkey: '6',
                 desc: 'Burns coal for power', powerOutput: 10, coalConsume: 0.1
             },
+            'thermal-generator': {
+                category: 'power', cost: { graphite: 80, lead: 120, titanium: 50 }, health: 100,
+                icon: '⚡', name: 'Thermal Gen', hotkey: null,
+                desc: 'Burns coal+lead for 30 power', powerOutput: 30, coalConsume: 0.15, leadConsume: 0.1,
+                width: 2, height: 2
+            },
             'power-node': {
-                category: 'power', cost: { copper: 5, lead: 5 }, health: 30,
+                category: 'power', cost: { copper: 15, lead: 15 }, health: 30,
                 icon: '⚡', name: 'P-Node', hotkey: '7',
                 desc: 'Distributes power', powerRange: 6
             },
             turret: {
-                category: 'defense', cost: { copper: 20 }, health: 50,
+                category: 'defense', cost: { copper: 60 }, health: 50,
                 icon: '🔫', name: 'Duo', hotkey: '8',
                 desc: 'Rapid fire turret (uses copper)', damage: 8, range: 6, cooldown: 400, ammoType: 'copper', ammoUse: 1
             },
             scatter: {
-                category: 'defense', cost: { copper: 30, lead: 20 }, health: 60,
+                category: 'defense', cost: { copper: 90, lead: 60 }, health: 60,
                 icon: '💥', name: 'Scatter', hotkey: '9',
-                desc: 'Fires 3 shot spread (uses lead)', damage: 4, range: 7, cooldown: 150, shots: 3, ammoType: 'lead', ammoUse: 2
+                desc: 'Fires 3 shot spread (uses lead)', damage: 4, range: 10, cooldown: 150, shots: 3, ammoType: 'lead', ammoUse: 2
             },
             laser: {
-                category: 'defense', cost: { copper: 40, lead: 30 }, health: 45,
+                category: 'defense', cost: { copper: 120, lead: 90 }, health: 45,
                 icon: '⚡', name: 'Arc', hotkey: '0',
                 desc: 'Electric arc (needs power)', damage: 15, range: 8, cooldown: 800, powerUse: 5
             },
+            stormer: {
+                category: 'defense', cost: { titanium: 70, copper: 50, lead: 40 }, health: 70,
+                icon: '🌪', name: 'Stormer', hotkey: null,
+                desc: 'Blasts sand like flamethrower, slows enemies', damage: 2, range: 5, cooldown: 100, ammoType: 'sand', ammoUse: 1, slowEffect: 0.5
+            },
             wall: {
-                category: 'defense', cost: { copper: 5 }, health: 80,
+                category: 'defense', cost: { copper: 6 }, health: 80,
                 icon: '▪', name: 'Wall', hotkey: 'Q',
                 desc: 'Basic defense'
             },
             'titanium-wall': {
-                category: 'defense', cost: { titanium: 5 }, health: 200,
+                category: 'defense', cost: { titanium: 15 }, health: 200,
                 icon: '▣', name: 'Ti-Wall', hotkey: 'E',
                 desc: 'Strong titanium wall'
             },
             'alloy-wall': {
-                category: 'defense', cost: { alloy: 8 }, health: 350,
+                category: 'defense', cost: { alloy: 24 }, health: 650,
                 icon: '▦', name: 'A-Wall', hotkey: null,
                 desc: 'Reinforced alloy wall'
             },
             'alloy-turret': {
-                category: 'defense', cost: { alloy: 25, titanium: 15 }, health: 100,
+                category: 'defense', cost: { alloy: 75, titanium: 45 }, health: 100,
                 icon: '🎯', name: 'Salvo', hotkey: null,
                 desc: 'Rapid alloy turret (uses alloy)', damage: 12, range: 8, cooldown: 250, ammoType: 'alloy', ammoUse: 1
             },
             explosive: {
-                category: 'defense', cost: { copper: 15, coal: 10 }, health: 30,
+                category: 'defense', cost: { copper: 45, coal: 30 }, health: 30,
                 icon: '💣', name: 'Bomb', hotkey: 'B',
                 desc: 'Explodes when destroyed!', explosionDamage: 80, explosionRange: 3
             },
             repair: {
-                category: 'defense', cost: { copper: 25, lead: 15 }, health: 40,
+                category: 'defense', cost: { copper: 75, lead: 45 }, health: 40,
                 icon: '🔧', name: 'Repair', hotkey: 'F',
-                desc: 'Repairs nearby buildings', repairRange: 5
+                desc: 'Repairs nearby buildings (needs power)', repairRange: 5, powerUse: 2
             },
             delete: {
                 category: 'tools', cost: {}, health: 0,
@@ -481,16 +559,19 @@
 
         // Game state
         let selectedBuilding = null;
+        let miningMode = false;
         let currentCategory = 'production';
         let rotation = 0;
+        let miningCooldown = 0;
         let buildings = [];
         let enemies = [];
         let bullets = [];
         let enemyBullets = [];
         let items = [];
         let particles = [];
+        let miners = []; // Mining drones
         let wave = 0;
-        let waveTimer = 60;
+        let waveTimer = 600; // Start with 600 seconds (10 minutes - first wave)
         let coreHealth = 500;
         let maxCoreHealth = 500;
         let gameOver = false;
@@ -556,6 +637,16 @@
             // Disable context menu
             this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
+            // Add mouse wheel rotation
+            this.game.canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    rotation = (rotation + 1) % 4; // Scroll up = rotate clockwise
+                } else if (e.deltaY > 0) {
+                    rotation = (rotation + 3) % 4; // Scroll down = rotate counter-clockwise
+                }
+            });
+
             // Keyboard
             keys = {
                 W: this.input.keyboard.addKey('W'),
@@ -596,26 +687,52 @@
             // Items now updated smoothly in main update loop
             this.time.addEvent({ delay: 1000, callback: repairTick, loop: true });
             this.time.addEvent({ delay: 500, callback: powerTick, loop: true });
+            
+            // Debug button handler
+            document.getElementById('debug-btn').addEventListener('click', () => {
+                // Give infinite resources (large amount)
+                resources.copper = 999999;
+                resources.lead = 999999;
+                resources.coal = 999999;
+                resources.titanium = 999999;
+                resources.graphite = 999999;
+                resources.alloy = 999999;
+                resources.sand = 999999;
+                updateResourceUI();
+            });
         }
 
         function generateTerrain() {
+            // Add randomness seed for variation
+            const seed = Math.random() * 1000;
+            
             for (let y = 0; y < MAP_HEIGHT; y++) {
                 terrainMap[y] = [];
                 for (let x = 0; x < MAP_WIDTH; x++) {
-                    // Use noise-like function for terrain
-                    const noise = Math.sin(x * 0.15) * Math.cos(y * 0.15) +
-                                  Math.sin(x * 0.08 + 1) * Math.cos(y * 0.12 + 2) * 0.5;
+                    // Multiple noise layers for more organic terrain
+                    const noise1 = Math.sin(x * 0.15 + seed) * Math.cos(y * 0.15 + seed);
+                    const noise2 = Math.sin(x * 0.08 + seed * 2) * Math.cos(y * 0.12 + seed * 2) * 0.5;
+                    const noise3 = Math.sin(x * 0.25 + seed * 3) * Math.cos(y * 0.2 + seed * 3) * 0.3;
+                    const noise4 = Math.sin(x * 0.4 + seed * 4) * Math.cos(y * 0.35 + seed * 4) * 0.2;
+                    
+                    const noise = noise1 + noise2 + noise3 + noise4;
+                    
+                    // Add random variation
+                    const randomFactor = (Math.random() - 0.5) * 0.3;
+                    const finalNoise = noise + randomFactor;
 
                     // Water near edges
                     const edgeDist = Math.min(x, y, MAP_WIDTH - x - 1, MAP_HEIGHT - y - 1);
 
                     if (edgeDist < 3 && Math.random() < 0.4) {
                         terrainMap[y][x] = TERRAIN.WATER;
-                    } else if (noise > 0.6) {
+                    } else if (finalNoise > 0.7) {
                         terrainMap[y][x] = TERRAIN.STONE;
-                    } else if (noise > 0.4) {
+                    } else if (finalNoise > 0.45) {
                         terrainMap[y][x] = TERRAIN.DARK_STONE;
-                    } else if (noise < -0.3) {
+                    } else if (finalNoise < -0.4) {
+                        terrainMap[y][x] = TERRAIN.SAND;
+                    } else if (finalNoise < -0.2 && Math.random() < 0.3) {
                         terrainMap[y][x] = TERRAIN.SAND;
                     } else {
                         terrainMap[y][x] = TERRAIN.GRASS;
@@ -728,11 +845,72 @@
                 }
 
                 if (!canAfford(type)) {
-                    btn.disabled = true;
+                    btn.classList.add('unaffordable');
+                    // Don't use disabled attribute - just style it differently
                 }
+
+                // Add tooltip on hover
+                btn.addEventListener('mouseenter', (e) => {
+                    showBuildButtonTooltip(type, data);
+                });
+
+                btn.addEventListener('mouseleave', () => {
+                    hideBuildButtonTooltip();
+                });
 
                 grid.appendChild(btn);
             });
+        }
+
+        function showBuildButtonTooltip(type, data) {
+            const tooltip = document.querySelector('.tooltip');
+            let html = `<div class="tooltip-title">${data.name}</div>`;
+            html += `<div class="tooltip-stat">${data.desc}</div>`;
+            
+            // Show cost with color coding
+            if (data.cost && Object.keys(data.cost).length > 0) {
+                let costHtml = '<div class="tooltip-stat"><span class="tooltip-stat-label">Cost:</span> ';
+                costHtml += Object.entries(data.cost).map(([res, amt]) => {
+                    const hasEnough = (resources[res] || 0) >= amt;
+                    const current = resources[res] || 0;
+                    return `<span style="color:${hasEnough ? getOreColorCSS(res) : '#ff4444'}">${amt} ${res} (${current})</span>`;
+                }).join(', ');
+                html += costHtml + '</div>';
+            }
+            
+            html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Health:</span> ${data.health}</div>`;
+            if (data.damage) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Damage:</span> ${data.damage}</div>`;
+            if (data.range) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Range:</span> ${data.range} tiles</div>`;
+            if (data.cooldown) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Fire rate:</span> ${(1000/data.cooldown).toFixed(1)}/s</div>`;
+            if (data.ammoType) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Ammo type:</span> <span style="color:${getOreColorCSS(data.ammoType)}">${data.ammoType}</span></div>`;
+            if (data.ammoUse) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Ammo/shot:</span> ${data.ammoUse}</div>`;
+            if (data.powerUse) {
+                html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power use:</span> ${data.powerUse}</div>`;
+                const surplus = powerGrid.production - powerGrid.consumption;
+                const surplusColor = surplus >= 0 ? '#4CAF50' : '#ff4444';
+                const surplusText = surplus >= 0 ? `+${surplus}` : surplus;
+                html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Grid balance:</span> <span style="color:${surplusColor}">${surplusText}</span> (${powerGrid.production}/${powerGrid.consumption})</div>`;
+            }
+            if (data.powerOutput) {
+                html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power output:</span> ${data.powerOutput}</div>`;
+                const surplus = powerGrid.production - powerGrid.consumption;
+                const surplusColor = surplus >= 0 ? '#4CAF50' : '#ff4444';
+                const surplusText = surplus >= 0 ? `+${surplus}` : surplus;
+                html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Grid balance:</span> <span style="color:${surplusColor}">${surplusText}</span> (${powerGrid.production}/${powerGrid.consumption})</div>`;
+            }
+            if (data.powerRange) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power range:</span> ${data.powerRange} tiles</div>`;
+            if (data.mineSpeed) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Mine speed:</span> ${data.mineSpeed}x</div>`;
+            if (data.repairRange) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Repair range:</span> ${data.repairRange} tiles</div>`;
+            if (data.craftTime) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Craft time:</span> ${(data.craftTime/1000).toFixed(1)}s</div>`;
+            if (data.slowEffect) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Slow effect:</span> ${(data.slowEffect * 100).toFixed(0)}%</div>`;
+            
+            tooltip.innerHTML = html;
+            tooltip.style.display = 'block';
+        }
+
+        function hideBuildButtonTooltip() {
+            const tooltip = document.querySelector('.tooltip');
+            tooltip.style.display = 'none';
         }
 
         function getBuildingColor(type) {
@@ -740,17 +918,21 @@
                 drill: 'linear-gradient(135deg, #8B4513, #654321)',
                 'pneumatic-drill': 'linear-gradient(135deg, #B87333, #8B5A2B)',
                 'alloy-drill': 'linear-gradient(135deg, #b8967a, #8a6a5a)',
+                'graphite-press': 'linear-gradient(135deg, #333333, #1a1a1a)',
                 'alloy-factory': 'linear-gradient(135deg, #887766, #665544)',
+                'miner-constructor': 'linear-gradient(135deg, #44aa44, #227722)',
                 conveyor: 'linear-gradient(135deg, #555, #333)',
                 'alloy-conveyor': 'linear-gradient(135deg, #b8967a, #8a6a5a)',
                 router: 'linear-gradient(135deg, #666699, #444477)',
                 junction: 'linear-gradient(135deg, #996666, #774444)',
                 generator: 'linear-gradient(135deg, #ff8800, #cc5500)',
+                'thermal-generator': 'linear-gradient(135deg, #ff4400, #aa2200)',
                 'power-node': 'linear-gradient(135deg, #ffcc00, #cc9900)',
                 turret: 'linear-gradient(135deg, #cc3333, #991111)',
                 scatter: 'linear-gradient(135deg, #cc6633, #994411)',
                 'alloy-turret': 'linear-gradient(135deg, #b8967a, #cc5555)',
                 laser: 'linear-gradient(135deg, #3366cc, #224499)',
+                stormer: 'linear-gradient(135deg, #c9b592, #a89572)',
                 wall: 'linear-gradient(135deg, #555, #333)',
                 'titanium-wall': 'linear-gradient(135deg, #4a7c9b, #2a5c7b)',
                 'alloy-wall': 'linear-gradient(135deg, #b8967a, #8a6a5a)',
@@ -764,13 +946,14 @@
         function getCostString(cost) {
             if (!cost || Object.keys(cost).length === 0) return '';
             return Object.entries(cost).map(([res, amt]) => {
-                const abbrev = { copper: 'Cu', lead: 'Pb', coal: 'C', titanium: 'Ti', alloy: 'Al' };
+                const abbrev = { copper: 'Cu', lead: 'Pb', coal: 'C', titanium: 'Ti', graphite: 'Gr', alloy: 'Al', sand: 'Sd' };
                 return amt + abbrev[res];
             }).join(' ');
         }
 
         function selectBuilding(type) {
             selectedBuilding = type;
+            miningMode = false; // Turn off mining mode when selecting a building
             renderBuildingGrid();
 
             // Switch to correct category
@@ -824,6 +1007,21 @@
             const world = screenToWorld(pointer.x, pointer.y);
             const tile = worldToTile(world.x, world.y);
 
+            // Middle click - pick building type
+            if (pointer.middleButtonDown()) {
+                const building = buildings.find(b => {
+                    if (b.type === 'core') return false; // Can't pick core
+                    const w = b.width || 1;
+                    const h = b.height || 1;
+                    return tile.x >= b.x && tile.x < b.x + w && tile.y >= b.y && tile.y < b.y + h;
+                });
+                
+                if (building) {
+                    selectBuilding(building.type);
+                }
+                return;
+            }
+
             if (pointer.rightButtonDown()) {
                 // Right click - deselect or delete
                 if (selectedBuilding) {
@@ -834,7 +1032,16 @@
                 return;
             }
 
-            // Start drag placement
+            // Left click when no building selected - toggle mining mode or mine
+            if (!selectedBuilding) {
+                miningMode = !miningMode;
+                if (miningMode) {
+                    manualMine();
+                }
+                return;
+            }
+
+            // Start drag placement if building is selected
             isDragging = true;
             lastDragTile = tile;
             tryPlaceBuilding(tile.x, tile.y);
@@ -897,10 +1104,33 @@
                         const powered = building.powered;
                         html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power:</span> <span style="color:${powered ? '#4CAF50' : '#ff4444'}">${powered ? '✓ Connected' : '✗ NONE'}</span></div>`;
                         html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power use:</span> ${data.powerUse}</div>`;
+                        
+                        // Show grid surplus/deficit
+                        const surplus = powerGrid.production - powerGrid.consumption;
+                        const surplusColor = surplus >= 0 ? '#4CAF50' : '#ff4444';
+                        const surplusText = surplus >= 0 ? `+${surplus}` : surplus;
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Grid balance:</span> <span style="color:${surplusColor}">${surplusText}</span> (${powerGrid.production}/${powerGrid.consumption})</div>`;
                     }
-                    if (data.powerOutput) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power output:</span> ${data.powerOutput}</div>`;
-                    if (building.ore) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Mining:</span> <span style="color:${getOreColorCSS(building.ore)}">${building.ore}</span></div>`;
-                    if (data.mineSpeed) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Mine speed:</span> ${data.mineSpeed}x</div>`;
+                    if (data.powerOutput) {
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power output:</span> ${data.powerOutput}</div>`;
+                        
+                        // Show grid surplus/deficit for generators too
+                        const surplus = powerGrid.production - powerGrid.consumption;
+                        const surplusColor = surplus >= 0 ? '#4CAF50' : '#ff4444';
+                        const surplusText = surplus >= 0 ? `+${surplus}` : surplus;
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Grid balance:</span> <span style="color:${surplusColor}">${surplusText}</span> (${powerGrid.production}/${powerGrid.consumption})</div>`;
+                    }
+                    if (building.ore) {
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Mining:</span> <span style="color:${getOreColorCSS(building.ore)}">${building.ore}</span></div>`;
+                        // Show ore count and speed bonus for drills
+                        if (building.oreCount !== undefined && building.type && (building.type === 'drill' || building.type === 'pneumatic-drill' || building.type === 'alloy-drill')) {
+                            const speedMultiplier = 1 + (building.oreCount - 1) * 0.25;
+                            const effectiveSpeed = data.mineSpeed * speedMultiplier;
+                            html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Ore tiles:</span> ${building.oreCount}/4</div>`;
+                            html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Effective speed:</span> ${effectiveSpeed.toFixed(2)}x <span style="color:#4CAF50">(+${((speedMultiplier - 1) * 100).toFixed(0)}%)</span></div>`;
+                        }
+                    }
+                    if (data.mineSpeed) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Base speed:</span> ${data.mineSpeed}x</div>`;
                     if (building.coalStored !== undefined) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Coal stored:</span> ${Math.floor(building.coalStored)}</div>`;
                     if (data.repairRange) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Repair range:</span> ${data.repairRange} tiles</div>`;
 
@@ -935,8 +1165,20 @@
                     if (data.damage) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Damage:</span> ${data.damage}</div>`;
                     if (data.range) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Range:</span> ${data.range} tiles</div>`;
                     if (data.ammoType) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Ammo type:</span> <span style="color:${getOreColorCSS(data.ammoType)}">${data.ammoType}</span></div>`;
-                    if (data.powerUse) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power use:</span> ${data.powerUse}</div>`;
-                    if (data.powerOutput) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power output:</span> ${data.powerOutput}</div>`;
+                    if (data.powerUse) {
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power use:</span> ${data.powerUse}</div>`;
+                        const surplus = powerGrid.production - powerGrid.consumption;
+                        const surplusColor = surplus >= 0 ? '#4CAF50' : '#ff4444';
+                        const surplusText = surplus >= 0 ? `+${surplus}` : surplus;
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Grid balance:</span> <span style="color:${surplusColor}">${surplusText}</span> (${powerGrid.production}/${powerGrid.consumption})</div>`;
+                    }
+                    if (data.powerOutput) {
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power output:</span> ${data.powerOutput}</div>`;
+                        const surplus = powerGrid.production - powerGrid.consumption;
+                        const surplusColor = surplus >= 0 ? '#4CAF50' : '#ff4444';
+                        const surplusText = surplus >= 0 ? `+${surplus}` : surplus;
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Grid balance:</span> <span style="color:${surplusColor}">${surplusText}</span> (${powerGrid.production}/${powerGrid.consumption})</div>`;
+                    }
                     if (data.mineSpeed) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Mine speed:</span> ${data.mineSpeed}x</div>`;
                     if (data.explosionDamage) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Explosion:</span> ${data.explosionDamage} dmg, ${data.explosionRange} range</div>`;
                     html += `<div class="tooltip-stat" style="margin-top:8px;color:#666;font-size:10px">Position: (${tile.x}, ${tile.y})</div>`;
@@ -962,12 +1204,12 @@
         }
 
         function getOreColorCSS(type) {
-            const colors = { copper: '#d4a574', lead: '#7799aa', coal: '#666666', titanium: '#4a7c9b', alloy: '#b8967a' };
+            const colors = { copper: '#d4a574', lead: '#888899', coal: '#666666', titanium: '#4a7c9b', graphite: '#2a2a2a', alloy: '#b8967a', sand: '#c9b592' };
             return colors[type] || '#ffffff';
         }
 
         function getOreColor(type) {
-            const colors = { copper: 0xd4a574, lead: 0x7799aa, coal: 0x444444, titanium: 0x4a7c9b, alloy: 0xb8967a };
+            const colors = { copper: 0xd4a574, lead: 0x888899, coal: 0x444444, titanium: 0x4a7c9b, graphite: 0x2a2a2a, alloy: 0xb8967a, sand: 0xc9b592 };
             return colors[type] || 0xffffff;
         }
 
@@ -980,16 +1222,42 @@
                 return;
             }
 
-            if (map[y][x] !== 0) return;
-            if (terrainMap[y][x] === TERRAIN.WATER) return;
+            const data = BUILDINGS[selectedBuilding];
+            const width = data.width || 1;
+            const height = data.height || 1;
+
+            // Check if all tiles are available for 2x2 buildings
+            for (let dy = 0; dy < height; dy++) {
+                for (let dx = 0; dx < width; dx++) {
+                    const checkX = x + dx;
+                    const checkY = y + dy;
+                    if (checkX >= MAP_WIDTH || checkY >= MAP_HEIGHT) return;
+                    if (map[checkY][checkX] !== 0) return;
+                    if (terrainMap[checkY][checkX] === TERRAIN.WATER) return;
+                }
+            }
+
             if (!canAfford(selectedBuilding)) return;
 
-            const isDrill = selectedBuilding === 'drill' || selectedBuilding === 'pneumatic-drill';
-            if (isDrill && !oreMap[y][x]) return;
+            const isDrill = selectedBuilding === 'drill' || selectedBuilding === 'pneumatic-drill' || selectedBuilding === 'alloy-drill';
+            if (isDrill) {
+                // For 2x2 drills, check if ANY of the 4 tiles has ore OR is sand
+                let hasOreOrSand = false;
+                for (let dy = 0; dy < height; dy++) {
+                    for (let dx = 0; dx < width; dx++) {
+                        if ((oreMap[y + dy] && oreMap[y + dy][x + dx]) || 
+                            (terrainMap[y + dy] && terrainMap[y + dy][x + dx] === TERRAIN.SAND)) {
+                            hasOreOrSand = true;
+                            break;
+                        }
+                    }
+                    if (hasOreOrSand) break;
+                }
+                if (!hasOreOrSand) return;
+            }
 
             spend(selectedBuilding);
 
-            const data = BUILDINGS[selectedBuilding];
             const building = {
                 type: selectedBuilding,
                 x: x, y: y,
@@ -999,11 +1267,47 @@
                 cooldown: 0,
                 stored: 0,
                 powered: false,
-                ammo: 0
+                ammo: 0,
+                width: width,
+                height: height
             };
 
             if (isDrill) {
-                building.ore = oreMap[y][x];
+                // For 2x2 drills, count all ore tiles and pick highest priority
+                // Priority: Sand < Coal < Copper < Lead < Titanium
+                // Note: Titanium can only be mined by pneumatic-drill and alloy-drill
+                const orePriority = { sand: 1, coal: 2, copper: 3, lead: 4, titanium: 5 };
+                let highestPriorityOre = null;
+                let highestPriority = 0;
+                let oreCount = 0;
+                const canMineTitanium = selectedBuilding === 'pneumatic-drill' || selectedBuilding === 'alloy-drill';
+                
+                for (let dy = 0; dy < height; dy++) {
+                    for (let dx = 0; dx < width; dx++) {
+                        let foundOre = null;
+                        if (oreMap[y + dy] && oreMap[y + dy][x + dx]) {
+                            foundOre = oreMap[y + dy][x + dx];
+                            // Skip titanium if drill can't mine it
+                            if (foundOre === 'titanium' && !canMineTitanium) {
+                                continue;
+                            }
+                        } else if (terrainMap[y + dy] && terrainMap[y + dy][x + dx] === TERRAIN.SAND) {
+                            foundOre = 'sand';
+                        }
+                        
+                        if (foundOre) {
+                            oreCount++;
+                            const priority = orePriority[foundOre] || 0;
+                            if (priority > highestPriority) {
+                                highestPriority = priority;
+                                highestPriorityOre = foundOre;
+                            }
+                        }
+                    }
+                }
+                
+                building.ore = highestPriorityOre;
+                building.oreCount = oreCount; // Store count for speed bonus
             }
 
             if (selectedBuilding === 'generator') {
@@ -1011,52 +1315,204 @@
                 building.active = false;
             }
 
-            // Alloy factory stores copper and lead
-            if (selectedBuilding === 'alloy-factory') {
-                building.copperStored = 0;
+            if (selectedBuilding === 'thermal-generator') {
+                building.coalStored = 0;
                 building.leadStored = 0;
+                building.active = false;
+            }
+
+            // Alloy factory stores lead and titanium
+            if (selectedBuilding === 'alloy-factory') {
+                building.leadStored = 0;
+                building.titaniumStored = 0;
                 building.craftProgress = 0;
                 building.powered = false;
             }
 
+            // Miner constructor stores lead and titanium
+            if (selectedBuilding === 'miner-constructor') {
+                building.leadStored = 0;
+                building.titaniumStored = 0;
+                building.craftProgress = 0;
+            }
+
+            // Graphite press stores coal
+            if (selectedBuilding === 'graphite-press') {
+                building.coalStored = 0;
+                building.craftProgress = 0;
+            }
+
             // Turrets start with NO ammo - must be fed via conveyors
-            if (selectedBuilding === 'turret' || selectedBuilding === 'scatter' || selectedBuilding === 'alloy-turret') {
+            if (selectedBuilding === 'turret' || selectedBuilding === 'scatter' || selectedBuilding === 'alloy-turret' || selectedBuilding === 'stormer') {
                 building.ammo = 0;
                 building.maxAmmo = 20;
             }
 
-            // Routers track last output direction for even distribution
-            if (selectedBuilding === 'router') {
-                building.lastOutput = 0;
-            }
-
             buildings.push(building);
-            map[y][x] = selectedBuilding;
+            
+            // For 2x2 buildings, create tile references that point to the master building
+            if (width > 1 || height > 1) {
+                building.isMaster = true;
+                building.tileX = x;
+                building.tileY = y;
+                
+                // Create tile reference objects for each tile
+                for (let dy = 0; dy < height; dy++) {
+                    for (let dx = 0; dx < width; dx++) {
+                        if (dx === 0 && dy === 0) continue; // Skip top-left (master)
+                        
+                        // Create a proxy that forwards all property access to master
+                        const tileRef = new Proxy({
+                            _isTileRef: true,
+                            _master: building,
+                            _x: x + dx,
+                            _y: y + dy
+                        }, {
+                            get(target, prop) {
+                                // Special properties that belong to the tile itself
+                                if (prop === 'isTileRef') return true;
+                                if (prop === 'master') return target._master;
+                                if (prop === 'x') return target._x;
+                                if (prop === 'y') return target._y;
+                                if (prop === 'width') return 1;
+                                if (prop === 'height') return 1;
+                                // Everything else comes from master
+                                return target._master[prop];
+                            },
+                            set(target, prop, value) {
+                                // All writes go to master
+                                if (prop === 'x' || prop === 'y') {
+                                    target['_' + prop] = value;
+                                    return true;
+                                }
+                                target._master[prop] = value;
+                                return true;
+                            }
+                        });
+                        
+                        buildings.push(tileRef);
+                        map[y + dy][x + dx] = selectedBuilding;
+                    }
+                }
+                // Mark master position
+                map[y][x] = selectedBuilding;
+            } else {
+                // Mark single tile as occupied
+                map[y][x] = selectedBuilding;
+            }
+            
             spawnParticles(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 0x44ff44, 5);
         }
 
         function deleteBuilding(x, y) {
-            const idx = buildings.findIndex(b => b.x === x && b.y === y && b.type !== 'core');
+            let idx = buildings.findIndex(b => {
+                if (b.type === 'core') return false;
+                const w = b.width || 1;
+                const h = b.height || 1;
+                return x >= b.x && x < b.x + w && y >= b.y && y < b.y + h;
+            });
             if (idx !== -1) {
-                const b = buildings[idx];
+                let b = buildings[idx];
+                
+                // Resolve to master if it's a tile reference
+                if (b.isTileRef) {
+                    b = b.master;
+                    idx = buildings.indexOf(b);
+                }
+                
                 const data = BUILDINGS[b.type];
+                const w = b.width || 1;
+                const h = b.height || 1;
+                
                 if (data && data.cost) {
                     for (let res in data.cost) {
                         resources[res] += Math.floor(data.cost[res] * 0.5);
                     }
                     updateResourceUI();
                 }
+                
+                // Remove master and all tile references
+                if (b.isMaster) {
+                    buildings = buildings.filter(building => {
+                        if (building === b) return false;
+                        if (building.isTileRef && building.master === b) return false;
+                        return true;
+                    });
+                } else {
+                    buildings.splice(idx, 1);
+                }
+                
+                // Clear all tiles
+                for (let dy = 0; dy < h; dy++) {
+                    for (let dx = 0; dx < w; dx++) {
+                        map[b.y + dy][b.x + dx] = 0;
+                    }
+                }
+                
+                spawnParticles(b.x * TILE_SIZE + TILE_SIZE/2, b.y * TILE_SIZE + TILE_SIZE/2, 0xff4444, 5);
+            }
+        }
+
+        function destroyBuilding(building) {
+            const idx = buildings.indexOf(building);
+            if (idx !== -1 && building.type !== 'core') {
+                // Check if explosive - trigger explosion
+                if (building.type === 'explosive') {
+                    const expData = BUILDINGS.explosive;
+                    const expRange = expData.explosionRange * TILE_SIZE;
+                    const expDamage = expData.explosionDamage;
+                    const targetX = building.x * TILE_SIZE + TILE_SIZE / 2;
+                    const targetY = building.y * TILE_SIZE + TILE_SIZE / 2;
+
+                    // Damage enemies in range
+                    enemies.forEach(e => {
+                        const dx = e.x - targetX;
+                        const dy = e.y - targetY;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        if (dist < expRange) {
+                            const falloff = 1 - (dist / expRange);
+                            e.health -= expDamage * falloff;
+                            spawnParticles(e.x, e.y, 0xff6600, 5);
+                        }
+                    });
+
+                    // Explosion particles (reduced for performance)
+                    for (let i = 0; i < 15; i++) {
+                        const angle = Math.random() * Math.PI * 2;
+                        const speed = Math.random() * 5 + 2;
+                        particles.push({
+                            x: targetX,
+                            y: targetY,
+                            vx: Math.cos(angle) * speed,
+                            vy: Math.sin(angle) * speed,
+                            color: Math.random() > 0.5 ? 0xff6600 : 0xffcc00,
+                            life: Math.random() * 30 + 20
+                        });
+                    }
+                }
+
+                // Remove from map - handle multi-tile buildings
+                const w = building.width || 1;
+                const h = building.height || 1;
+                for (let dy = 0; dy < h; dy++) {
+                    for (let dx = 0; dx < w; dx++) {
+                        map[building.y + dy][building.x + dx] = 0;
+                    }
+                }
+                
                 buildings.splice(idx, 1);
-                map[y][x] = 0;
-                spawnParticles(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2, 0xff4444, 5);
+                spawnParticles(building.x * TILE_SIZE + TILE_SIZE/2, building.y * TILE_SIZE + TILE_SIZE/2, 0x666666, 10);
             }
         }
 
         function produceTick() {
             buildings.forEach(b => {
-                if ((b.type === 'drill' || b.type === 'pneumatic-drill') && b.ore) {
+                if ((b.type === 'drill' || b.type === 'pneumatic-drill' || b.type === 'alloy-drill') && b.ore) {
                     const data = BUILDINGS[b.type];
-                    b.stored = (b.stored || 0) + data.mineSpeed;
+                    // Speed bonus: each ore tile adds 25% speed (1 tile = 1x, 2 tiles = 1.25x, 3 tiles = 1.5x, 4 tiles = 1.75x)
+                    const oreCount = b.oreCount || 1;
+                    const speedMultiplier = 1 + (oreCount - 1) * 0.25;
+                    b.stored = (b.stored || 0) + data.mineSpeed * speedMultiplier;
                     if (b.stored >= 2) {
                         outputItem(b, b.ore);
                         b.stored = 0;
@@ -1082,6 +1538,17 @@
                         b.active = false;
                     }
                 }
+                if (b.type === 'thermal-generator') {
+                    const data = BUILDINGS['thermal-generator'];
+                    if (b.coalStored > data.coalConsume && b.leadStored > data.leadConsume) {
+                        b.coalStored -= data.coalConsume;
+                        b.leadStored -= data.leadConsume;
+                        b.active = true;
+                        totalProduction += data.powerOutput;
+                    } else {
+                        b.active = false;
+                    }
+                }
             });
 
             // Count power consumers
@@ -1092,16 +1559,19 @@
                 if (b.type === 'alloy-factory') {
                     totalConsumption += BUILDINGS['alloy-factory'].powerUse;
                 }
+                if (b.type === 'repair') {
+                    totalConsumption += BUILDINGS.repair.powerUse;
+                }
             });
 
-            const availablePower = totalProduction;
-            let powerUsed = 0;
+            // Calculate power efficiency (everything runs slower when low on power)
+            const powerEfficiency = totalConsumption > 0 ? 
+                Math.min(1.0, totalProduction / totalConsumption) : 1.0;
 
-            // Power all consumers that are connected
-            buildings.filter(b => b.type === 'laser' || b.type === 'alloy-factory').forEach(consumer => {
+            // Power all connected consumers (they all run but slower if not enough power)
+            buildings.filter(b => b.type === 'laser' || b.type === 'alloy-factory' || b.type === 'repair').forEach(consumer => {
                 const cx = consumer.x * TILE_SIZE + TILE_SIZE/2;
                 const cy = consumer.y * TILE_SIZE + TILE_SIZE/2;
-                const powerUse = BUILDINGS[consumer.type].powerUse;
 
                 const connected = buildings.some(node => {
                     if (node.type !== 'power-node' && node.type !== 'generator') return false;
@@ -1111,80 +1581,285 @@
                     return dist <= BUILDINGS['power-node'].powerRange * TILE_SIZE;
                 });
 
-                if (connected && availablePower - powerUsed >= powerUse) {
-                    consumer.powered = true;
-                    powerUsed += powerUse;
-                } else {
-                    consumer.powered = false;
+                consumer.powered = connected;
+                consumer.powerEfficiency = connected ? powerEfficiency : 0;
+            });
+
+            // Graphite press crafting (no power required)
+            buildings.filter(b => b.type === 'graphite-press').forEach(press => {
+                if (press.coalStored >= 2) {
+                    press.craftProgress = (press.craftProgress || 0) + 500; // Progress per tick (500ms)
+                    if (press.craftProgress >= BUILDINGS['graphite-press'].craftTime) {
+                        press.craftProgress = 0;
+                        press.coalStored -= 2;
+                        // Output graphite
+                        outputItem(press, 'graphite');
+                    }
                 }
             });
 
-            // Alloy factory crafting (only when powered and has materials)
+            // Alloy factory crafting (slower when low power)
             buildings.filter(b => b.type === 'alloy-factory').forEach(factory => {
-                if (factory.powered && factory.copperStored >= 1 && factory.leadStored >= 1) {
-                    factory.craftProgress += 500; // Progress per tick (500ms)
+                if (factory.powered && factory.leadStored >= 1 && factory.titaniumStored >= 1) {
+                    const progressRate = 500 * (factory.powerEfficiency || 0); // Slowed by power efficiency
+                    factory.craftProgress = (factory.craftProgress || 0) + progressRate;
                     if (factory.craftProgress >= BUILDINGS['alloy-factory'].craftTime) {
                         factory.craftProgress = 0;
-                        factory.copperStored--;
                         factory.leadStored--;
+                        factory.titaniumStored--;
                         // Output alloy
                         outputItem(factory, 'alloy');
                     }
                 }
             });
 
+            // Miner constructor crafting (no power required)
+            buildings.filter(b => b.type === 'miner-constructor').forEach(constructor => {
+                if (constructor.leadStored >= 50 && constructor.titaniumStored >= 50) {
+                    constructor.craftProgress = (constructor.craftProgress || 0) + 500; // Progress per tick (500ms)
+                    if (constructor.craftProgress >= BUILDINGS['miner-constructor'].craftTime) {
+                        constructor.craftProgress = 0;
+                        constructor.leadStored -= 50;
+                        constructor.titaniumStored -= 50;
+                        // Spawn a miner unit
+                        spawnMiner(constructor);
+                    }
+                }
+            });
+
             powerGrid.production = totalProduction;
-            powerGrid.consumption = powerUsed;
+            powerGrid.consumption = totalConsumption;
+        }
+
+        function spawnMiner(constructor) {
+            // Determine which ore to target based on current resources
+            // Target copper if more lead, target lead if more copper
+            const targetOreType = (resources.lead || 0) > (resources.copper || 0) ? 'copper' : 'lead';
+            
+            // Find nearest ore of target type
+            let nearestOre = null;
+            let nearestDist = Infinity;
+            const constructorCenterX = constructor.x + 1;
+            const constructorCenterY = constructor.y + 1;
+            
+            for (let y = 0; y < MAP_HEIGHT; y++) {
+                for (let x = 0; x < MAP_WIDTH; x++) {
+                    const ore = oreMap[y] && oreMap[y][x];
+                    if (ore === targetOreType) {
+                        const dist = Math.sqrt((x - constructorCenterX) ** 2 + (y - constructorCenterY) ** 2);
+                        if (dist < nearestDist) {
+                            nearestDist = dist;
+                            nearestOre = { x, y, type: ore };
+                        }
+                    }
+                }
+            }
+            
+            // If no ore of target type found, try the other type
+            if (!nearestOre) {
+                const fallbackType = targetOreType === 'copper' ? 'lead' : 'copper';
+                for (let y = 0; y < MAP_HEIGHT; y++) {
+                    for (let x = 0; x < MAP_WIDTH; x++) {
+                        const ore = oreMap[y] && oreMap[y][x];
+                        if (ore === fallbackType) {
+                            const dist = Math.sqrt((x - constructorCenterX) ** 2 + (y - constructorCenterY) ** 2);
+                            if (dist < nearestDist) {
+                                nearestDist = dist;
+                                nearestOre = { x, y, type: ore };
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if (nearestOre) {
+                miners.push({
+                    x: (constructor.x + 1) * TILE_SIZE,
+                    y: (constructor.y + 1) * TILE_SIZE,
+                    targetX: nearestOre.x,
+                    targetY: nearestOre.y,
+                    oreType: nearestOre.type,
+                    miningCooldown: 0,
+                    health: 50,
+                    maxHealth: 50
+                });
+                spawnParticles((constructor.x + 1) * TILE_SIZE, (constructor.y + 1) * TILE_SIZE, 0x44ff44, 8);
+            }
         }
 
         function outputItem(building, itemType) {
-            const dir = getDirection(building.rotation);
-            const outX = building.x + dir.x;
-            const outY = building.y + dir.y;
-
-            if (outX < 0 || outX >= MAP_WIDTH || outY < 0 || outY >= MAP_HEIGHT) return;
-
-            const target = buildings.find(t =>
-                t.x === outX && t.y === outY ||
-                (t.type === 'core' && outX >= t.x && outX < t.x + 2 && outY >= t.y && outY < t.y + 2)
-            );
-
-            if (target) {
-                if (target.type === 'core') {
-                    resources[itemType] = (resources[itemType] || 0) + 1;
-                    updateResourceUI();
-                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
-                } else if (target.type === 'generator' && itemType === 'coal') {
-                    target.coalStored = (target.coalStored || 0) + 1;
-                } else if (target.type === 'alloy-factory') {
-                    // Alloy factory accepts copper and lead
-                    if (itemType === 'copper' && target.copperStored < 10) {
-                        target.copperStored++;
-                        spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
-                    } else if (itemType === 'lead' && target.leadStored < 10) {
-                        target.leadStored++;
-                        spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+            // For drills, check all edges of the 2x2 drill
+            const isDrill = building.type === 'drill' || building.type === 'pneumatic-drill' || building.type === 'alloy-drill';
+            
+            if (isDrill) {
+                // For 2x2 drills, check all tiles on all 4 edges
+                const width = building.width || 1;
+                const height = building.height || 1;
+                const edges = [];
+                
+                // Right edge
+                for (let dy = 0; dy < height; dy++) {
+                    edges.push({ x: building.x + width, y: building.y + dy });
+                }
+                // Left edge
+                for (let dy = 0; dy < height; dy++) {
+                    edges.push({ x: building.x - 1, y: building.y + dy });
+                }
+                // Bottom edge
+                for (let dx = 0; dx < width; dx++) {
+                    edges.push({ x: building.x + dx, y: building.y + height });
+                }
+                // Top edge
+                for (let dx = 0; dx < width; dx++) {
+                    edges.push({ x: building.x + dx, y: building.y - 1 });
+                }
+                
+                for (const pos of edges) {
+                    if (pos.x < 0 || pos.x >= MAP_WIDTH || pos.y < 0 || pos.y >= MAP_HEIGHT) continue;
+                    
+                    const target = buildings.find(t =>
+                        t.x === pos.x && t.y === pos.y ||
+                        (t.type === 'core' && pos.x >= t.x && pos.x < t.x + 2 && pos.y >= t.y && pos.y < t.y + 2)
+                    );
+                    
+                    if (target && tryOutputToTarget(building, target, pos.x, pos.y, itemType)) {
+                        return; // Successfully output, stop checking
                     }
-                } else if (target.type === 'conveyor' || target.type === 'alloy-conveyor' || target.type === 'router' || target.type === 'junction') {
-                    // Items now use world coordinates for smooth movement
-                    const startWorldX = building.x * TILE_SIZE + TILE_SIZE / 2;
-                    const startWorldY = building.y * TILE_SIZE + TILE_SIZE / 2;
-                    items.push({
-                        type: itemType,
-                        worldX: startWorldX,
-                        worldY: startWorldY,
-                        targetTileX: outX,
-                        targetTileY: outY,
-                        fromDir: (building.rotation + 2) % 4
+                }
+            } else {
+                // For 2x2 buildings, check all edges based on rotation
+                const width = building.width || 1;
+                const height = building.height || 1;
+                const dir = getDirection(building.rotation);
+                
+                // Generate all possible output positions based on size and rotation
+                const outputPositions = [];
+                if (width === 2 && height === 2) {
+                    // For 2x2, check the entire edge in the output direction
+                    if (dir.x > 0) {
+                        outputPositions.push({ x: building.x + 2, y: building.y });
+                        outputPositions.push({ x: building.x + 2, y: building.y + 1 });
+                    } else if (dir.x < 0) {
+                        outputPositions.push({ x: building.x - 1, y: building.y });
+                        outputPositions.push({ x: building.x - 1, y: building.y + 1 });
+                    } else if (dir.y > 0) {
+                        outputPositions.push({ x: building.x, y: building.y + 2 });
+                        outputPositions.push({ x: building.x + 1, y: building.y + 2 });
+                    } else if (dir.y < 0) {
+                        outputPositions.push({ x: building.x, y: building.y - 1 });
+                        outputPositions.push({ x: building.x + 1, y: building.y - 1 });
+                    }
+                } else {
+                    // For 1x1, single output position
+                    outputPositions.push({ x: building.x + dir.x, y: building.y + dir.y });
+                }
+                
+                // Try each output position
+                for (const pos of outputPositions) {
+                    if (pos.x < 0 || pos.x >= MAP_WIDTH || pos.y < 0 || pos.y >= MAP_HEIGHT) continue;
+                    
+                    const target = buildings.find(t => {
+                        // Check exact tile match
+                        if (t.x === pos.x && t.y === pos.y) return true;
+                        // Check 2x2 buildings
+                        const w = t.width || 1;
+                        const h = t.height || 1;
+                        if (w > 1 || h > 1) {
+                            return pos.x >= t.x && pos.x < t.x + w && pos.y >= t.y && pos.y < t.y + h;
+                        }
+                        return false;
                     });
-                } else if ((target.type === 'turret' || target.type === 'scatter') &&
-                           BUILDINGS[target.type].ammoType === itemType &&
-                           target.ammo < (target.maxAmmo || 20)) {
-                    // Feed ammo to turret
-                    target.ammo++;
-                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+
+                    if (target && tryOutputToTarget(building, target, pos.x, pos.y, itemType)) {
+                        return; // Successfully output
+                    }
                 }
             }
+        }
+
+        function tryOutputToTarget(building, target, outX, outY, itemType) {
+            if (target.type === 'core') {
+                resources[itemType] = (resources[itemType] || 0) + 1;
+                updateResourceUI();
+                spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                return true;
+            } else if (target.type === 'generator' && itemType === 'coal') {
+                target.coalStored = (target.coalStored || 0) + 1;
+                return true;
+            } else if (target.type === 'thermal-generator') {
+                if (itemType === 'coal' && target.coalStored < 10) {
+                    target.coalStored++;
+                    return true;
+                } else if (itemType === 'lead' && target.leadStored < 10) {
+                    target.leadStored++;
+                    return true;
+                }
+            } else if (target.type === 'graphite-press' && itemType === 'coal') {
+                if (target.coalStored < 2) {
+                    target.coalStored++;
+                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    return true;
+                }
+            } else if (target.type === 'alloy-factory') {
+                // Alloy factory accepts lead and titanium
+                if (itemType === 'lead' && target.leadStored < 10) {
+                    target.leadStored++;
+                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    return true;
+                } else if (itemType === 'titanium' && target.titaniumStored < 10) {
+                    target.titaniumStored++;
+                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    return true;
+                }
+            } else if (target.type === 'miner-constructor') {
+                // Miner constructor accepts lead and titanium
+                if (itemType === 'lead' && target.leadStored < 100) {
+                    target.leadStored++;
+                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    return true;
+                } else if (itemType === 'titanium' && target.titaniumStored < 100) {
+                    target.titaniumStored++;
+                    spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    return true;
+                }
+            } else if (target.type === 'conveyor' || target.type === 'alloy-conveyor' || target.type === 'router' || target.type === 'junction') {
+                // Don't output to a conveyor that's facing towards us (it wants to output TO us, not receive FROM us)
+                if (target.type === 'conveyor' || target.type === 'alloy-conveyor') {
+                    const conveyorOutputDir = getDirection(target.rotation);
+                    const conveyorOutputX = target.x + conveyorOutputDir.x;
+                    const conveyorOutputY = target.y + conveyorOutputDir.y;
+                    
+                    // Check if the conveyor is outputting towards the source building
+                    const bw = building.width || 1;
+                    const bh = building.height || 1;
+                    const conveyorPointsToSource = conveyorOutputX >= building.x && conveyorOutputX < building.x + bw &&
+                                                     conveyorOutputY >= building.y && conveyorOutputY < building.y + bh;
+                    if (conveyorPointsToSource) {
+                        return false; // Can't output to a conveyor facing us
+                    }
+                }
+                
+                // Items now use world coordinates for smooth movement
+                const startWorldX = building.x * TILE_SIZE + TILE_SIZE / 2;
+                const startWorldY = building.y * TILE_SIZE + TILE_SIZE / 2;
+                items.push({
+                    type: itemType,
+                    worldX: startWorldX,
+                    worldY: startWorldY,
+                    targetTileX: outX,
+                    targetTileY: outY,
+                    fromDir: -1 // No specific from direction for drills
+                });
+                return true;
+            } else if ((target.type === 'turret' || target.type === 'scatter') &&
+                       BUILDINGS[target.type].ammoType === itemType &&
+                       target.ammo < (target.maxAmmo || 20)) {
+                // Feed ammo to turret
+                target.ammo++;
+                spawnParticles(outX * TILE_SIZE + TILE_SIZE/2, outY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                return true;
+            }
+            return false;
         }
 
         // Smooth item movement speed (pixels per frame)
@@ -1203,20 +1878,40 @@
                 spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
                 toRemove.push(idx);
                 return true;
-            } else if (target.type === 'alloy-factory') {
-                // Alloy factory accepts copper and lead
-                if (item.type === 'copper' && target.copperStored < 10) {
-                    target.copperStored++;
-                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
-                    toRemove.push(idx);
-                    return true;
-                } else if (item.type === 'lead' && target.leadStored < 10) {
-                    target.leadStored++;
+            } else if (target.type === 'graphite-press' && item.type === 'coal') {
+                if (target.coalStored < 2) {
+                    target.coalStored++;
                     spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
                     toRemove.push(idx);
                     return true;
                 }
-            } else if ((target.type === 'turret' || target.type === 'scatter' || target.type === 'alloy-turret') &&
+            } else if (target.type === 'alloy-factory') {
+                // Alloy factory accepts lead and titanium
+                if (item.type === 'lead' && target.leadStored < 10) {
+                    target.leadStored++;
+                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                    toRemove.push(idx);
+                    return true;
+                } else if (item.type === 'titanium' && target.titaniumStored < 10) {
+                    target.titaniumStored++;
+                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                    toRemove.push(idx);
+                    return true;
+                }
+            } else if (target.type === 'miner-constructor') {
+                // Miner constructor accepts lead and titanium
+                if (item.type === 'lead' && target.leadStored < 100) {
+                    target.leadStored++;
+                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                    toRemove.push(idx);
+                    return true;
+                } else if (item.type === 'titanium' && target.titaniumStored < 100) {
+                    target.titaniumStored++;
+                    spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
+                    toRemove.push(idx);
+                    return true;
+                }
+            } else if ((target.type === 'turret' || target.type === 'scatter' || target.type === 'alloy-turret' || target.type === 'stormer') &&
                        BUILDINGS[target.type].ammoType === item.type &&
                        target.ammo < (target.maxAmmo || 20)) {
                 // Feed ammo to turret
@@ -1262,7 +1957,19 @@
                     item.worldX = targetWorldX;
                     item.worldY = targetWorldY;
 
-                    const building = buildings.find(b => b.x === item.targetTileX && b.y === item.targetTileY);
+                    let building = buildings.find(b => {
+                        // Check if target tile is within building bounds
+                        const w = b.width || 1;
+                        const h = b.height || 1;
+                        return item.targetTileX >= b.x && item.targetTileX < b.x + w &&
+                               item.targetTileY >= b.y && item.targetTileY < b.y + h;
+                    });
+                    
+                    // Resolve tile reference to master
+                    if (building && building.isTileRef) {
+                        building = building.master;
+                    }
+                    
                     if (!building) {
                         toRemove.push(idx);
                         return;
@@ -1271,7 +1978,7 @@
                     // Determine output directions and find valid targets
                     let moved = false;
 
-                    if (building.type === 'conveyor') {
+                    if (building.type === 'conveyor' || building.type === 'alloy-conveyor') {
                         // Conveyor: single output direction
                         const dir = building.rotation;
                         const d = getDirection(dir);
@@ -1289,8 +1996,8 @@
                             }
                         }
                     } else if (building.type === 'router') {
-                        // Router: distribute evenly to all valid outputs
-                        // First, find all valid output targets (excluding input direction)
+                        // Router: distribute evenly to valid outputs only
+                        // Only outputs to: conveyors facing away, cores, and buildings that need this resource
                         let validOutputs = [];
 
                         for (let dirIdx = 0; dirIdx < 4; dirIdx++) {
@@ -1302,35 +2009,89 @@
 
                             if (nextX < 0 || nextX >= MAP_WIDTH || nextY < 0 || nextY >= MAP_HEIGHT) continue;
 
-                            const target = buildings.find(b =>
-                                b.x === nextX && b.y === nextY ||
-                                (b.type === 'core' && nextX >= b.x && nextX < b.x + 2 && nextY >= b.y && nextY < b.y + 2)
-                            );
+                            let target = buildings.find(b => {
+                                // Check exact tile match
+                                if (b.x === nextX && b.y === nextY) return true;
+                                // Check 2x2 buildings (core, graphite-press, alloy-factory, thermal-generator, drills)
+                                const w = b.width || 1;
+                                const h = b.height || 1;
+                                if (w > 1 || h > 1) {
+                                    return nextX >= b.x && nextX < b.x + w && nextY >= b.y && nextY < b.y + h;
+                                }
+                                return false;
+                            });
+                            
+                            // Resolve tile reference to master
+                            if (target && target.isTileRef) {
+                                target = target.master;
+                            }
 
                             if (target) {
-                                // Check if this is a valid output
-                                const isValidTarget =
-                                    target.type === 'core' ||
-                                    (target.type === 'generator' && item.type === 'coal') ||
-                                    ((target.type === 'turret' || target.type === 'scatter') &&
-                                     BUILDINGS[target.type].ammoType === item.type &&
-                                     target.ammo < (target.maxAmmo || 20)) ||
-                                    target.type === 'conveyor' ||
-                                    target.type === 'router' ||
-                                    target.type === 'junction';
+                                let isValidTarget = false;
+                                
+                                // Always output to core
+                                if (target.type === 'core') {
+                                    isValidTarget = true;
+                                }
+                                // Output to generator if it needs coal
+                                else if (target.type === 'generator' && item.type === 'coal') {
+                                    isValidTarget = true;
+                                }
+                                // Output to thermal generator if it needs coal or lead
+                                else if (target.type === 'thermal-generator') {
+                                    if ((item.type === 'coal' && target.coalStored < 10) ||
+                                        (item.type === 'lead' && target.leadStored < 10)) {
+                                        isValidTarget = true;
+                                    }
+                                }
+                                // Output to graphite press if it needs coal
+                                else if (target.type === 'graphite-press' && item.type === 'coal' && target.coalStored < 2) {
+                                    isValidTarget = true;
+                                }
+                                // Output to alloy factory if it needs copper or lead
+                                else if (target.type === 'alloy-factory') {
+                                    if ((item.type === 'lead' && target.leadStored < 10) ||
+                                        (item.type === 'titanium' && target.titaniumStored < 10)) {
+                                        isValidTarget = true;
+                                    }
+                                }
+                                // Output to miner constructor if it needs lead or titanium
+                                else if (target.type === 'miner-constructor') {
+                                    if ((item.type === 'lead' && target.leadStored < 100) ||
+                                        (item.type === 'titanium' && target.titaniumStored < 100)) {
+                                        isValidTarget = true;
+                                    }
+                                }
+                                // Output to turret if it needs ammo
+                                else if ((target.type === 'turret' || target.type === 'scatter' || target.type === 'alloy-turret' || target.type === 'stormer') &&
+                                         BUILDINGS[target.type].ammoType === item.type &&
+                                         target.ammo < (target.maxAmmo || 20)) {
+                                    isValidTarget = true;
+                                }
+                                // Output to conveyor ONLY if it's facing away from the router
+                                else if (target.type === 'conveyor' || target.type === 'alloy-conveyor') {
+                                    // Conveyor's rotation determines input direction
+                                    // A conveyor accepts input from behind (opposite of its output direction)
+                                    const conveyorOutputDir = target.rotation;
+                                    const conveyorInputDir = (conveyorOutputDir + 2) % 4; // Opposite direction
+                                    
+                                    // Check if router's output direction matches conveyor's input direction
+                                    if (dirIdx === conveyorInputDir) {
+                                        isValidTarget = true;
+                                    }
+                                }
+                                // Output to other routers and junctions
+                                else if (target.type === 'router' || target.type === 'junction') {
+                                    isValidTarget = true;
+                                }
 
                                 if (isValidTarget) {
-                                    // For conveyors/routers/junctions, check if not blocked
-                                    if (target.type === 'conveyor' || target.type === 'router' || target.type === 'junction') {
-                                        const occupied = items.some(i => i !== item &&
-                                            i.targetTileX === nextX && i.targetTileY === nextY &&
-                                            Math.sqrt((i.worldX - targetWorldX)**2 + (i.worldY - targetWorldY)**2) < TILE_SIZE * 0.6
-                                        );
-                                        if (!occupied) {
-                                            validOutputs.push({ dir: dirIdx, target, nextX, nextY });
-                                        }
-                                    } else {
-                                        // All outputs have equal priority - distribute evenly
+                                    // Check if not blocked
+                                    const occupied = items.some(i => i !== item &&
+                                        i.targetTileX === nextX && i.targetTileY === nextY &&
+                                        Math.sqrt((i.worldX - targetWorldX)**2 + (i.worldY - targetWorldY)**2) < TILE_SIZE * 0.6
+                                    );
+                                    if (!occupied) {
                                         validOutputs.push({ dir: dirIdx, target, nextX, nextY });
                                     }
                                 }
@@ -1338,24 +2099,9 @@
                         }
 
                         if (validOutputs.length > 0) {
-                            // All outputs have equal priority - use round-robin distribution
-                            const lastOutput = building.lastOutput || 0;
-                            let chosenIdx = 0;
-
-                            // Find the next output in rotation order (by direction)
-                            for (let i = 0; i < validOutputs.length; i++) {
-                                if (validOutputs[i].dir > lastOutput) {
-                                    chosenIdx = i;
-                                    break;
-                                }
-                            }
-                            // If none found after lastOutput, wrap to first
-                            if (validOutputs[chosenIdx].dir <= lastOutput && validOutputs.length > 1) {
-                                chosenIdx = 0;
-                            }
-
+                            // Use random distribution
+                            const chosenIdx = Math.floor(Math.random() * validOutputs.length);
                             const chosen = validOutputs[chosenIdx];
-                            building.lastOutput = chosen.dir;
 
                             moved = handleItemTarget(item, chosen.target, chosen.nextX, chosen.nextY, chosen.dir, targetWorldX, targetWorldY, toRemove, idx);
                         }
@@ -1386,11 +2132,16 @@
             for (let i = toRemove.length - 1; i >= 0; i--) {
                 items.splice(toRemove[i], 1);
             }
+            
+            // Hard limit on items for performance
+            if (items.length > 150) {
+                items.splice(0, items.length - 150);
+            }
         }
 
         function repairTick() {
             buildings.forEach(b => {
-                if (b.type === 'repair') {
+                if (b.type === 'repair' && b.powered) { // Only repair when powered
                     const range = BUILDINGS.repair.repairRange * TILE_SIZE;
                     const rx = b.x * TILE_SIZE + TILE_SIZE/2;
                     const ry = b.y * TILE_SIZE + TILE_SIZE/2;
@@ -1425,6 +2176,38 @@
             }
         }
 
+        function manualMine() {
+            if (player.respawnTimer > 0) return;
+
+            // Check tiles around player
+            const playerTileX = Math.floor(player.x / TILE_SIZE);
+            const playerTileY = Math.floor(player.y / TILE_SIZE);
+
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    const checkX = playerTileX + dx;
+                    const checkY = playerTileY + dy;
+
+                    if (checkX >= 0 && checkX < MAP_WIDTH && checkY >= 0 && checkY < MAP_HEIGHT) {
+                        const ore = oreMap[checkY][checkX];
+                        
+                        // Can only manually mine copper and lead
+                        if (ore === 'copper' || ore === 'lead') {
+                            resources[ore] = (resources[ore] || 0) + 3; // Mine 3 at a time for faster gathering
+                            updateResourceUI();
+                            
+                            // Visual feedback
+                            const mineX = checkX * TILE_SIZE + TILE_SIZE / 2;
+                            const mineY = checkY * TILE_SIZE + TILE_SIZE / 2;
+                            spawnParticles(mineX, mineY, getOreColor(ore), 5);
+                            
+                            return; // Only mine one tile per press
+                        }
+                    }
+                }
+            }
+        }
+
         function startWaveEarly() {
             if (waveTimer > 5) {
                 resources.copper += Math.floor(waveTimer / 2);
@@ -1436,9 +2219,10 @@
         function spawnWave() {
             wave++;
             document.getElementById('wave-num').textContent = wave;
-            waveTimer = 60 + wave * 5;
+            waveTimer = 120; // 2 minutes between waves
 
-            const baseCount = 4 + wave * 2;
+            // Start with 1 enemy, add 1 per wave (much slower progression)
+            const baseCount = wave;
 
             for (let i = 0; i < baseCount; i++) {
                 // Spawn from designated spawn point
@@ -1447,23 +2231,23 @@
 
                 let enemyType = 'basic';
                 const roll = Math.random();
-                if (wave >= 2 && roll < 0.25) enemyType = 'fast';
-                if (wave >= 3 && roll < 0.2) enemyType = 'shooter';
-                if (wave >= 4 && roll < 0.15) enemyType = 'sniper';
-                if (wave >= 5 && roll < 0.12) enemyType = 'artillery';
-                if (wave >= 5 && roll < 0.18) enemyType = 'tank';
-                if (wave >= 6 && roll < 0.1) enemyType = 'swarm';
-                if (wave >= 8 && roll < 0.08) enemyType = 'boss';
+                if (wave >= 3 && roll < 0.2) enemyType = 'fast';
+                if (wave >= 5 && roll < 0.15) enemyType = 'shooter';
+                if (wave >= 7 && roll < 0.12) enemyType = 'sniper';
+                if (wave >= 9 && roll < 0.1) enemyType = 'artillery';
+                if (wave >= 9 && roll < 0.15) enemyType = 'tank';
+                if (wave >= 11 && roll < 0.08) enemyType = 'swarm';
+                if (wave >= 15 && roll < 0.05) enemyType = 'boss';
 
                 const stats = {
-                    basic: { health: 40 + wave * 5, speed: 0.9, size: 12, color: 0xff5555, damage: 1, canShoot: false },
-                    fast: { health: 20 + wave * 3, speed: 1.8, size: 10, color: 0xffaa00, damage: 0.5, canShoot: false },
-                    shooter: { health: 30 + wave * 4, speed: 0.7, size: 11, color: 0xff8844, damage: 0.5, canShoot: true, range: 6, fireCooldown: 1800, bulletSpeed: 4 },
-                    sniper: { health: 25 + wave * 3, speed: 0.5, size: 10, color: 0x8844ff, damage: 2, canShoot: true, range: 10, fireCooldown: 3000, bulletSpeed: 8 },
-                    artillery: { health: 60 + wave * 6, speed: 0.3, size: 16, color: 0x448844, damage: 4, canShoot: true, range: 12, fireCooldown: 4000, bulletSpeed: 3, splash: true },
-                    tank: { health: 100 + wave * 12, speed: 0.35, size: 18, color: 0x884444, damage: 3, canShoot: true, range: 4, fireCooldown: 2500, bulletSpeed: 5 },
-                    swarm: { health: 15 + wave * 2, speed: 2.2, size: 8, color: 0xff88ff, damage: 0.3, canShoot: false },
-                    boss: { health: 300 + wave * 25, speed: 0.25, size: 26, color: 0xff0000, damage: 8, canShoot: true, range: 8, fireCooldown: 1200, bulletSpeed: 6 }
+                    basic: { health: 40 + wave * 5, speed: 0.9, size: 12, color: 0xff5555, damage: 2, canShoot: true, range: 5, fireCooldown: 500, bulletSpeed: 8 },
+                    fast: { health: 20 + wave * 3, speed: 1.8, size: 10, color: 0xffaa00, damage: 2, canShoot: true, range: 4, fireCooldown: 500, bulletSpeed: 10 },
+                    shooter: { health: 30 + wave * 4, speed: 0.7, size: 11, color: 0xff8844, damage: 3, canShoot: true, range: 6, fireCooldown: 500, bulletSpeed: 9 },
+                    sniper: { health: 25 + wave * 3, speed: 0.5, size: 10, color: 0x8844ff, damage: 4, canShoot: true, range: 10, fireCooldown: 500, bulletSpeed: 12 },
+                    artillery: { health: 60 + wave * 6, speed: 0.3, size: 16, color: 0x448844, damage: 5, canShoot: true, range: 12, fireCooldown: 500, bulletSpeed: 7, splash: true },
+                    tank: { health: 100 + wave * 12, speed: 0.35, size: 18, color: 0x884444, damage: 4, canShoot: true, range: 4, fireCooldown: 500, bulletSpeed: 9 },
+                    swarm: { health: 15 + wave * 2, speed: 2.2, size: 8, color: 0xff88ff, damage: 2, canShoot: true, range: 3, fireCooldown: 500, bulletSpeed: 11 },
+                    boss: { health: 300 + wave * 25, speed: 0.25, size: 26, color: 0xff0000, damage: 5, canShoot: true, range: 8, fireCooldown: 500, bulletSpeed: 10 }
                 }[enemyType];
 
                 enemies.push({
@@ -1487,7 +2271,9 @@
             document.getElementById('lead-count').textContent = resources.lead || 0;
             document.getElementById('coal-count').textContent = resources.coal || 0;
             document.getElementById('titanium-count').textContent = resources.titanium || 0;
+            document.getElementById('graphite-count').textContent = resources.graphite || 0;
             document.getElementById('alloy-count').textContent = resources.alloy || 0;
+            document.getElementById('sand-count').textContent = resources.sand || 0;
             renderBuildingGrid();
         }
 
@@ -1534,6 +2320,8 @@
         }
 
         function spawnParticles(x, y, color, count) {
+            // Reduce particle count for performance (max 5 per spawn)
+            count = Math.min(count, 5);
             for (let i = 0; i < count; i++) {
                 particles.push({
                     x: x, y: y,
@@ -1547,6 +2335,9 @@
         }
 
         function update(time, delta) {
+            // Cache timestamp for performance
+            const now = Date.now();
+            
             if (gameOver) {
                 graphics.clear();
                 graphics.fillStyle(0xff0000, 0.5);
@@ -1566,6 +2357,15 @@
             // Handle invulnerability timer
             if (player.invulnerable > 0) {
                 player.invulnerable -= delta;
+            }
+
+            // Handle mining cooldown and auto-mine when in mining mode
+            if (miningCooldown > 0) {
+                miningCooldown -= delta;
+            }
+            if (miningMode && miningCooldown <= 0 && player.respawnTimer <= 0) {
+                manualMine();
+                miningCooldown = 200; // Mine every 200ms (faster)
             }
 
             // Player movement (only if alive)
@@ -1627,18 +2427,43 @@
                 }
             }
 
-            // Draw ore deposits
+            // Draw ore deposits (optimized)
             for (let y = startTileY; y < endTileY; y++) {
                 for (let x = startTileX; x < endTileX; x++) {
                     if (oreMap[y][x]) {
                         const screenX = x * TILE_SIZE - camera.x;
                         const screenY = y * TILE_SIZE - camera.y;
-                        const color = getOreColor(oreMap[y][x]);
-
-                        graphics.fillStyle(color, 0.6);
-                        graphics.fillRoundedRect(screenX + 3, screenY + 3, TILE_SIZE - 6, TILE_SIZE - 6, 4);
-                        graphics.fillStyle(color, 0.3);
-                        graphics.fillRoundedRect(screenX + 6, screenY + 6, TILE_SIZE - 12, TILE_SIZE - 12, 2);
+                        const ore = oreMap[y][x];
+                        const color = getOreColor(ore);
+                        
+                        // Base ore patch
+                        graphics.fillStyle(color, 0.4);
+                        graphics.fillRoundedRect(screenX + 4, screenY + 4, TILE_SIZE - 8, TILE_SIZE - 8, 3);
+                        
+                        // Simplified crystal texture (reduced from 3-5 to 2-3 crystals)
+                        const seed = x * 13 + y * 17;
+                        const numCrystals = ore === 'titanium' ? 3 : 2;
+                        
+                        for (let i = 0; i < numCrystals; i++) {
+                            const cx = screenX + 8 + ((seed * (i + 1) * 7) % (TILE_SIZE - 16));
+                            const cy = screenY + 8 + ((seed * (i + 1) * 11) % (TILE_SIZE - 16));
+                            const size = 3 + ((seed * i) % 3);
+                            
+                            graphics.fillStyle(color, 0.9);
+                            graphics.fillCircle(cx, cy, size);
+                        }
+                        
+                        // Simplified ore-specific details
+                        if (ore === 'copper') {
+                            graphics.fillStyle(0xffaa66, 0.2);
+                            graphics.fillRect(screenX + 6, screenY + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+                        } else if (ore === 'lead') {
+                            graphics.fillStyle(0xaaaaaa, 0.25);
+                            graphics.fillRect(screenX + 7, screenY + 7, TILE_SIZE - 14, 2);
+                        } else if (ore === 'titanium') {
+                            graphics.fillStyle(0x66aaff, 0.25);
+                            graphics.fillCircle(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, 5);
+                        }
                     }
                 }
             }
@@ -1654,6 +2479,9 @@
 
             // Draw buildings
             buildings.forEach(b => {
+                // Skip tile references - only draw master buildings
+                if (b.isTileRef) return;
+                
                 const screenX = b.x * TILE_SIZE - camera.x;
                 const screenY = b.y * TILE_SIZE - camera.y;
 
@@ -1666,6 +2494,50 @@
 
             // Update items smoothly every frame
             updateItems();
+
+            // Update miners
+            for (let i = miners.length - 1; i >= 0; i--) {
+                const miner = miners[i];
+                const targetWorldX = miner.targetX * TILE_SIZE + TILE_SIZE / 2;
+                const targetWorldY = miner.targetY * TILE_SIZE + TILE_SIZE / 2;
+                
+                // Move towards target
+                const dx = targetWorldX - miner.x;
+                const dy = targetWorldY - miner.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                if (dist > 5) {
+                    // Move towards ore
+                    const speed = 2;
+                    miner.x += (dx / dist) * speed;
+                    miner.y += (dy / dist) * speed;
+                } else {
+                    // At ore - mine it
+                    miner.miningCooldown -= delta;
+                    if (miner.miningCooldown <= 0) {
+                        miner.miningCooldown = 1000; // Mine every 1 second
+                        resources[miner.oreType] = (resources[miner.oreType] || 0) + 1;
+                        updateResourceUI();
+                        spawnParticles(miner.x, miner.y, getOreColor(miner.oreType), 2);
+                    }
+                }
+                
+                // Check if miner is damaged by enemies
+                enemies.forEach(e => {
+                    const dx = e.x - miner.x;
+                    const dy = e.y - miner.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < TILE_SIZE) {
+                        miner.health -= 0.1; // Damage over time
+                    }
+                });
+                
+                // Remove dead miners
+                if (miner.health <= 0) {
+                    spawnParticles(miner.x, miner.y, 0xff4444, 10);
+                    miners.splice(i, 1);
+                }
+            }
 
             // Draw items using world coordinates
             items.forEach(item => {
@@ -1683,6 +2555,32 @@
                 }
             });
 
+            // Draw miners
+            miners.forEach(miner => {
+                const screenX = miner.x - camera.x;
+                const screenY = miner.y - camera.y;
+                
+                if (screenX > -20 && screenX < window.innerWidth + 20 &&
+                    screenY > -20 && screenY < window.innerHeight + 20) {
+                    // Miner body (small drone)
+                    graphics.fillStyle(0x4CAF50);
+                    graphics.fillCircle(screenX, screenY, 8);
+                    
+                    // Propellers
+                    const propAngle = (Date.now() / 50) % (Math.PI * 2);
+                    graphics.lineStyle(2, 0x888888);
+                    graphics.strokeCircle(screenX - 6, screenY - 6, 3);
+                    graphics.strokeCircle(screenX + 6, screenY - 6, 3);
+                    
+                    // Health bar
+                    const healthPct = miner.health / miner.maxHealth;
+                    graphics.fillStyle(0x333333);
+                    graphics.fillRect(screenX - 10, screenY + 12, 20, 3);
+                    graphics.fillStyle(healthPct > 0.5 ? 0x4CAF50 : 0xff4444);
+                    graphics.fillRect(screenX - 10, screenY + 12, 20 * healthPct, 3);
+                }
+            });
+
             // Update and draw enemies
             const core = buildings.find(b => b.type === 'core');
             enemies.forEach((enemy, idx) => {
@@ -1691,20 +2589,43 @@
                     return;
                 }
 
-                // Find target - prioritize nearby buildings over core
+                // Find target - priority system: transport < defense < power < production < core
+                // Also attack anything in the way
                 let targetX, targetY;
                 let targetBuilding = null;
                 let minDist = Infinity;
+                let highestPriority = -1;
+                
+                const getPriority = (building) => {
+                    if (building.isTileRef) building = building.master;
+                    if (!building) return -1;
+                    const category = BUILDINGS[building.type]?.category;
+                    if (building.type === 'core') return 5; // Highest priority
+                    if (category === 'production') return 4;
+                    if (category === 'power') return 3;
+                    if (category === 'defense') return 2;
+                    if (category === 'transport') return 1;
+                    return 0;
+                };
 
-                // Check for nearby buildings to attack (excluding core initially)
+                // Find highest priority target within 5 tile radius
+                const SEARCH_RADIUS = TILE_SIZE * 5;
+                
                 buildings.forEach(b => {
-                    if (b.type === 'core') return;
-
+                    if (b.isTileRef) return; // Skip tile refs, we'll handle via master
+                    
                     const bx = b.x * TILE_SIZE + TILE_SIZE/2;
                     const by = b.y * TILE_SIZE + TILE_SIZE/2;
                     const dist = Math.sqrt((enemy.x - bx)**2 + (enemy.y - by)**2);
-
-                    if (dist < TILE_SIZE * 4 && dist < minDist) {
+                    
+                    // Only consider buildings within 5 tile radius
+                    if (dist > SEARCH_RADIUS) return;
+                    
+                    const priority = getPriority(b);
+                    
+                    // Prioritize by: 1) Priority level, 2) Distance for same priority
+                    if (priority > highestPriority || (priority === highestPriority && dist < minDist)) {
+                        highestPriority = priority;
                         minDist = dist;
                         targetBuilding = b;
                         targetX = bx;
@@ -1712,7 +2633,7 @@
                     }
                 });
 
-                // If no nearby building, target core
+                // If no target found in radius, default to core
                 if (!targetBuilding && core) {
                     targetX = (core.x + 1) * TILE_SIZE;
                     targetY = (core.y + 1) * TILE_SIZE;
@@ -1725,14 +2646,43 @@
                 const dx = targetX - enemy.x;
                 const dy = targetY - enemy.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
+                
+                // Attack anything in the way (within 1 tile)
+                buildings.forEach(b => {
+                    if (b.isTileRef) return;
+                    const bx = b.x * TILE_SIZE + TILE_SIZE/2;
+                    const by = b.y * TILE_SIZE + TILE_SIZE/2;
+                    const distToBuilding = Math.sqrt((enemy.x - bx)**2 + (enemy.y - by)**2);
+                    
+                    // If building is in the way (within 1.5 tiles) and between enemy and target
+                    if (distToBuilding < TILE_SIZE * 1.5) {
+                        const angleToTarget = Math.atan2(dy, dx);
+                        const angleToBuilding = Math.atan2(by - enemy.y, bx - enemy.x);
+                        const angleDiff = Math.abs(angleToTarget - angleToBuilding);
+                        
+                        if (angleDiff < Math.PI / 4 || angleDiff > 7 * Math.PI / 4) {
+                            // Building is roughly in direction of target - attack it
+                            b.health -= 0.5; // Damage buildings in the way
+                        }
+                    }
+                });
 
                 // Shooting enemies stop at range and shoot instead of ramming
                 const shootingRange = enemy.canShoot ? enemy.range * TILE_SIZE * 0.9 : TILE_SIZE;
                 const shouldMove = !enemy.canShoot || dist > shootingRange;
 
                 if (shouldMove && dist > TILE_SIZE) {
-                    enemy.x += (dx / dist) * enemy.speed;
-                    enemy.y += (dy / dist) * enemy.speed;
+                    // Apply slow effect if active
+                    let speedMultiplier = 1.0;
+                    if (enemy.slowedUntil && Date.now() < enemy.slowedUntil) {
+                        speedMultiplier = enemy.slowFactor || 0.5;
+                    } else {
+                        enemy.slowedUntil = null;
+                        enemy.slowFactor = null;
+                    }
+                    
+                    enemy.x += (dx / dist) * enemy.speed * speedMultiplier;
+                    enemy.y += (dy / dist) * enemy.speed * speedMultiplier;
                 }
 
                 // Enemy shooting
@@ -1788,46 +2738,63 @@
                             alert('Game Over! Wave ' + wave);
                         }
                     } else if (targetBuilding.health <= 0) {
-                        const bidx = buildings.indexOf(targetBuilding);
-                        if (bidx !== -1) {
-                            // Check if explosive - trigger explosion
-                            if (targetBuilding.type === 'explosive') {
-                                const expData = BUILDINGS.explosive;
-                                const expRange = expData.explosionRange * TILE_SIZE;
-                                const expDamage = expData.explosionDamage;
+                        destroyBuilding(targetBuilding);
+                    }
+                }
 
-                                // Damage enemies in range
-                                enemies.forEach(e => {
-                                    const dx = e.x - targetX;
-                                    const dy = e.y - targetY;
-                                    const dist = Math.sqrt(dx*dx + dy*dy);
-                                    if (dist < expRange) {
-                                        const falloff = 1 - (dist / expRange);
-                                        e.health -= expDamage * falloff;
-                                        spawnParticles(e.x, e.y, 0xff6600, 5);
-                                    }
-                                });
+                // Fast enemies are kamikaze - explode on contact
+                if (enemy.type === 'fast' && dist < TILE_SIZE * 1.5) {
+                    const explosionRange = TILE_SIZE * 2.5;
+                    const explosionDamage = 40 + wave * 8;
 
-                                // Big explosion particles
-                                for (let i = 0; i < 30; i++) {
-                                    const angle = Math.random() * Math.PI * 2;
-                                    const speed = Math.random() * 5 + 2;
-                                    particles.push({
-                                        x: targetX,
-                                        y: targetY,
-                                        vx: Math.cos(angle) * speed,
-                                        vy: Math.sin(angle) * speed,
-                                        color: Math.random() > 0.5 ? 0xff6600 : 0xffcc00,
-                                        life: Math.random() * 30 + 20
-                                    });
+                    // Damage all buildings in range
+                    const damagedBuildings = [];
+                    buildings.forEach(b => {
+                        const bx = b.x * TILE_SIZE + TILE_SIZE / 2;
+                        const by = b.y * TILE_SIZE + TILE_SIZE / 2;
+                        const bDist = Math.sqrt((bx - enemy.x)**2 + (by - enemy.y)**2);
+                        if (bDist < explosionRange) {
+                            const falloff = 1 - (bDist / explosionRange);
+                            b.health -= explosionDamage * falloff;
+                            if (b.type === 'core') {
+                                coreHealth = b.health;
+                                if (coreHealth <= 0) {
+                                    gameOver = true;
+                                    alert('Game Over! Wave ' + wave);
                                 }
+                            } else if (b.health <= 0) {
+                                damagedBuildings.push(b);
                             }
+                        }
+                    });
+                    damagedBuildings.forEach(b => destroyBuilding(b));
 
-                            map[targetBuilding.y][targetBuilding.x] = 0;
-                            buildings.splice(bidx, 1);
-                            spawnParticles(targetX, targetY, 0x666666, 10);
+                    // Damage player if nearby
+                    const playerDist = Math.sqrt((player.x - enemy.x)**2 + (player.y - enemy.y)**2);
+                    if (playerDist < explosionRange && player.respawnTimer <= 0 && player.invulnerable <= 0) {
+                        const falloff = 1 - (playerDist / explosionRange);
+                        player.health -= explosionDamage * falloff;
+                        if (player.health <= 0) {
+                            respawnPlayer();
                         }
                     }
+
+                    // Explosion effect (reduced particles for performance)
+                    for (let i = 0; i < 20; i++) {
+                        const particleAngle = Math.random() * Math.PI * 2;
+                        const speed = Math.random() * 6 + 3;
+                        particles.push({
+                            x: enemy.x,
+                            y: enemy.y,
+                            vx: Math.cos(particleAngle) * speed,
+                            vy: Math.sin(particleAngle) * speed,
+                            color: Math.random() > 0.5 ? 0xff6600 : 0xffaa00,
+                            life: Math.random() * 40 + 30
+                        });
+                    }
+
+                    // Kill the kamikaze enemy
+                    enemy.health = 0;
                 }
 
                 // Draw enemy
@@ -1841,9 +2808,47 @@
                     graphics.fillStyle(0x000000, 0.3);
                     graphics.fillEllipse(screenX, screenY + enemy.size * 0.8, enemy.size, enemy.size * 0.4);
 
-                    // Body
+                    // Body with type-specific designs
                     graphics.fillStyle(enemy.color);
-                    graphics.fillCircle(screenX, screenY, enemy.size);
+                    
+                    if (enemy.type === 'basic') {
+                        // Basic enemy - hexagonal assault drone
+                        graphics.fillCircle(screenX, screenY, enemy.size);
+                        graphics.fillStyle(enemy.color * 0.7);
+                        graphics.fillCircle(screenX, screenY, enemy.size * 0.6);
+                        // Directional indicator
+                        graphics.fillStyle(0xff8888);
+                        const angle = Math.atan2(dy, dx);
+                        graphics.fillCircle(screenX + Math.cos(angle) * 5, screenY + Math.sin(angle) * 5, 3);
+                        // Side panels
+                        graphics.fillStyle(0xaa3333);
+                        graphics.fillRect(screenX - enemy.size, screenY - 2, enemy.size * 0.6, 4);
+                        graphics.fillRect(screenX + enemy.size * 0.4, screenY - 2, enemy.size * 0.6, 4);
+                    } else if (enemy.type === 'fast') {
+                        // Fast enemy - sleek rocket with thrusters
+                        const angle = Math.atan2(dy, dx);
+                        graphics.fillCircle(screenX, screenY, enemy.size);
+                        // Rocket body
+                        graphics.fillStyle(0xff8800);
+                        graphics.fillCircle(screenX, screenY, enemy.size * 0.7);
+                        // Nose cone
+                        graphics.fillStyle(0xffaa00);
+                        graphics.fillCircle(screenX + Math.cos(angle) * 4, screenY + Math.sin(angle) * 4, enemy.size * 0.5);
+                        // Thruster flames
+                        const thrustX = screenX - Math.cos(angle) * enemy.size;
+                        const thrustY = screenY - Math.sin(angle) * enemy.size;
+                        graphics.fillStyle(0xff6600, 0.8);
+                        graphics.fillCircle(thrustX, thrustY, 4);
+                        graphics.fillStyle(0xffff00, 0.6);
+                        graphics.fillCircle(thrustX, thrustY, 2);
+                        // Warning stripes (kamikaze indicator)
+                        graphics.fillStyle(0xffff00);
+                        graphics.fillRect(screenX - 4, screenY - 1, 3, 2);
+                        graphics.fillRect(screenX + 1, screenY - 1, 3, 2);
+                    } else {
+                        // Default circular body for other types
+                        graphics.fillCircle(screenX, screenY, enemy.size);
+                    }
 
                     // Details based on type
                     const angle = Math.atan2(dy, dx);
@@ -1971,11 +2976,12 @@
 
                     // Splash damage for artillery
                     if (bullet.splash) {
-                        spawnParticles(bullet.x, bullet.y, 0x448844, 15);
-                        spawnParticles(bullet.x, bullet.y, 0xffaa00, 10);
+                        spawnParticles(bullet.x, bullet.y, 0x448844, 5); // Reduced from 15
+                        spawnParticles(bullet.x, bullet.y, 0xffaa00, 3); // Reduced from 10
 
                         // Damage buildings in splash radius
                         const splashRadius = TILE_SIZE * 2;
+                        const damagedBuildings = [];
                         buildings.forEach(b => {
                             const bx = b.x * TILE_SIZE + TILE_SIZE / 2;
                             const by = b.y * TILE_SIZE + TILE_SIZE / 2;
@@ -1985,8 +2991,18 @@
                                 b.health -= bullet.damage * falloff;
                                 if (b.type === 'core') {
                                     coreHealth = b.health;
+                                    if (coreHealth <= 0) {
+                                        gameOver = true;
+                                        alert('Game Over! Wave ' + wave);
+                                    }
+                                } else if (b.health <= 0) {
+                                    damagedBuildings.push(b);
                                 }
                             }
+                        });
+                        // Remove destroyed buildings
+                        damagedBuildings.forEach(b => {
+                            destroyBuilding(b);
                         });
                     }
 
@@ -1995,6 +3011,12 @@
                         bullet.targetBuilding.health -= bullet.damage;
                         if (bullet.targetBuilding.type === 'core') {
                             coreHealth = bullet.targetBuilding.health;
+                            if (coreHealth <= 0) {
+                                gameOver = true;
+                                alert('Game Over! Wave ' + wave);
+                            }
+                        } else if (bullet.targetBuilding.health <= 0) {
+                            destroyBuilding(bullet.targetBuilding);
                         }
                     }
                 }
@@ -2036,12 +3058,17 @@
             });
 
             enemyBullets = enemyBullets.filter(b => !b.hit);
+            
+            // Hard limit on bullets for performance
+            if (enemyBullets.length > 100) {
+                enemyBullets.splice(0, enemyBullets.length - 100);
+            }
 
             // Turret AI
             buildings.forEach(b => {
-                if (b.type === 'turret' || b.type === 'scatter' || b.type === 'laser' || b.type === 'alloy-turret') {
+                if (b.type === 'turret' || b.type === 'scatter' || b.type === 'laser' || b.type === 'alloy-turret' || b.type === 'stormer') {
                     if (b.type === 'laser' && !b.powered) return;
-                    if ((b.type === 'turret' || b.type === 'scatter' || b.type === 'alloy-turret') && b.ammo <= 0) return;
+                    if ((b.type === 'turret' || b.type === 'scatter' || b.type === 'alloy-turret' || b.type === 'stormer') && b.ammo <= 0) return;
 
                     const data = BUILDINGS[b.type];
                     b.cooldown = (b.cooldown || 0) - delta;
@@ -2132,8 +3159,48 @@
                                     }
                                 }
                             });
+                        } else if (b.type === 'stormer') {
+                            // Stormer fires continuous sand stream, hits multiple enemies in cone
+                            const angle = b.turretAngle || Math.atan2(closest.y - ty, closest.x - tx);
+                            const coneWidth = 0.4; // Cone spread in radians
+                            
+                            enemies.forEach(e => {
+                                if (e.delay > 0) return;
+                                const dist = Math.sqrt((e.x - tx)**2 + (e.y - ty)**2);
+                                const angleToEnemy = Math.atan2(e.y - ty, e.x - tx);
+                                let angleDiff = angleToEnemy - angle;
+                                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                                
+                                if (dist < range && Math.abs(angleDiff) < coneWidth) {
+                                    e.health -= data.damage;
+                                    // Apply slow effect
+                                    e.slowedUntil = Date.now() + 1000; // Slow for 1 second
+                                    e.slowFactor = data.slowEffect; // 50% speed
+                                    spawnParticles(e.x, e.y, 0xc9b592, 5);
+                                }
+                            });
+                            
+                            // Visual sand blast effect
+                            const screenTx = tx - camera.x;
+                            const screenTy = ty - camera.y;
+                            for (let i = 0; i < 5; i++) {
+                                const spreadAngle = angle + (Math.random() - 0.5) * coneWidth * 2;
+                                const len = range * (0.7 + Math.random() * 0.3);
+                                const ex = tx + Math.cos(spreadAngle) * len;
+                                const ey = ty + Math.sin(spreadAngle) * len;
+                                const screenEx = ex - camera.x;
+                                const screenEy = ey - camera.y;
+                                graphics.lineStyle(2 + Math.random() * 2, 0xc9b592, 0.3 + Math.random() * 0.3);
+                                graphics.lineBetween(screenTx, screenTy, screenEx, screenEy);
+                            }
+                            
+                            b.ammo--;
                         }
-                        b.cooldown = data.cooldown;
+                        // Apply cooldown (slower when low power for laser)
+                        const cooldownMult = (b.type === 'laser' && b.powerEfficiency) ? 
+                            (1 / Math.max(0.2, b.powerEfficiency)) : 1.0;
+                        b.cooldown = data.cooldown * cooldownMult;
                     }
                 }
             });
@@ -2190,22 +3257,40 @@
             });
 
             bullets = bullets.filter(b => !b.hit);
+            
+            // Hard limit on bullets for performance
+            if (bullets.length > 80) {
+                bullets.splice(0, bullets.length - 80);
+            }
 
             // Update particles
-            particles.forEach(p => {
+            // Update and draw particles (optimized with culling)
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
                 p.x += p.vx;
                 p.y += p.vy;
                 p.vy += 0.1;
                 p.life--;
 
-                if (p.life > 0) {
-                    const screenX = p.x - camera.x;
-                    const screenY = p.y - camera.y;
+                if (p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+
+                // Only draw particles on screen
+                const screenX = p.x - camera.x;
+                const screenY = p.y - camera.y;
+                if (screenX > -20 && screenX < window.innerWidth + 20 &&
+                    screenY > -20 && screenY < window.innerHeight + 20) {
                     graphics.fillStyle(p.color, p.life / 30);
                     graphics.fillCircle(screenX, screenY, p.size * (p.life / 30));
                 }
-            });
-            particles = particles.filter(p => p.life > 0);
+            }
+            
+            // Limit total particle count for performance
+            if (particles.length > 100) {
+                particles.splice(0, particles.length - 100);
+            }
 
             // Draw player ship
             drawPlayer();
@@ -2220,28 +3305,55 @@
                     const screenX = tile.x * TILE_SIZE - camera.x;
                     const screenY = tile.y * TILE_SIZE - camera.y;
 
+                    const data = BUILDINGS[selectedBuilding];
+                    const width = data.width || 1;
+                    const height = data.height || 1;
+
                     const canPlace = map[tile.y][tile.x] === 0 &&
                                     terrainMap[tile.y][tile.x] !== TERRAIN.WATER &&
                                     canAfford(selectedBuilding);
-                    const isDrill = selectedBuilding === 'drill' || selectedBuilding === 'pneumatic-drill';
-                    const needsOre = isDrill && !oreMap[tile.y][tile.x];
+                    const isDrill = selectedBuilding === 'drill' || selectedBuilding === 'pneumatic-drill' || selectedBuilding === 'alloy-drill';
+                    
+                    // For drills, check if ANY tile in the 2x2 area has ore
+                    let hasOreOrSand = false;
+                    if (isDrill) {
+                        for (let dy = 0; dy < height; dy++) {
+                            for (let dx = 0; dx < width; dx++) {
+                                if (tile.y + dy >= MAP_HEIGHT || tile.x + dx >= MAP_WIDTH) continue;
+                                if ((oreMap[tile.y + dy] && oreMap[tile.y + dy][tile.x + dx]) ||
+                                    (terrainMap[tile.y + dy] && terrainMap[tile.y + dy][tile.x + dx] === TERRAIN.SAND)) {
+                                    hasOreOrSand = true;
+                                    break;
+                                }
+                            }
+                            if (hasOreOrSand) break;
+                        }
+                    }
+                    const needsOre = isDrill && !hasOreOrSand;
 
+                    // Draw preview for full building size
                     graphics.fillStyle(needsOre ? 0xff0000 : (canPlace ? 0x00ff00 : 0xff0000), 0.3);
-                    graphics.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+                    graphics.fillRect(screenX, screenY, TILE_SIZE * width, TILE_SIZE * height);
 
-                    if (isDrill || selectedBuilding === 'conveyor') {
-                        drawArrow(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, rotation, 0xffffff);
+                    // Draw direction arrow in center for rotatable buildings
+                    if (isDrill || selectedBuilding === 'conveyor' || selectedBuilding === 'alloy-conveyor' || selectedBuilding === 'graphite-press' || selectedBuilding === 'alloy-factory' || selectedBuilding === 'thermal-generator') {
+                        const centerX = screenX + (TILE_SIZE * width) / 2;
+                        const centerY = screenY + (TILE_SIZE * height) / 2;
+                        drawArrow(centerX, centerY, rotation, 0xffffff);
                     }
 
-                    // Show range
-                    const data = BUILDINGS[selectedBuilding];
+                    // Show range from center
                     if (data.range) {
+                        const centerX = screenX + (TILE_SIZE * width) / 2;
+                        const centerY = screenY + (TILE_SIZE * height) / 2;
                         graphics.lineStyle(1, 0x4444ff, 0.3);
-                        graphics.strokeCircle(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, data.range * TILE_SIZE);
+                        graphics.strokeCircle(centerX, centerY, data.range * TILE_SIZE);
                     }
                     if (data.powerRange) {
+                        const centerX = screenX + (TILE_SIZE * width) / 2;
+                        const centerY = screenY + (TILE_SIZE * height) / 2;
                         graphics.lineStyle(1, 0xffcc00, 0.3);
-                        graphics.strokeCircle(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, data.powerRange * TILE_SIZE);
+                        graphics.strokeCircle(centerX, centerY, data.powerRange * TILE_SIZE);
                     }
                 }
             }
@@ -2364,6 +3476,20 @@
             graphics.fillStyle(0x666677);
             graphics.fillCircle(screenX - 10, screenY, 2);
             graphics.fillCircle(screenX + 10, screenY, 2);
+
+            // Mining mode indicator - simplified for performance
+            if (miningMode) {
+                const miningPulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
+                graphics.lineStyle(2, 0x44ff44, miningPulse * 0.6);
+                graphics.strokeCircle(screenX, screenY, 30);
+                
+                // Single rotating indicator instead of 4 beams
+                const angle = (Date.now() / 400) % (Math.PI * 2);
+                graphics.lineStyle(2, 0x88ff88, miningPulse * 0.5);
+                const beamX = screenX + Math.cos(angle) * 25;
+                const beamY = screenY + Math.sin(angle) * 25;
+                graphics.lineBetween(screenX, screenY, beamX, beamY);
+            }
         }
 
         function drawBuilding(b, screenX, screenY) {
@@ -2400,69 +3526,398 @@
                 graphics.fillRect(px + TILE_SIZE * 2 - 6, py + TILE_SIZE - 3, 4, 6);
 
             } else if (b.type === 'drill') {
-                // Realistic drill
-                graphics.fillStyle(0x654321);
-                graphics.fillRoundedRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, 4);
+                // Industrial mining drill - 2x2 with better visuals
+                const width = TILE_SIZE * 2;
+                const height = TILE_SIZE * 2;
+                
+                // Base platform
+                graphics.fillStyle(0x4a4a4a);
+                graphics.fillRoundedRect(px + 2, py + 2, width - 4, height - 4, 6);
 
-                // Metal frame
-                graphics.fillStyle(0x888888);
-                graphics.fillRect(px + 4, py + 4, TILE_SIZE - 8, 4);
-                graphics.fillRect(px + 4, py + TILE_SIZE - 8, TILE_SIZE - 8, 4);
+                // Metal housing
+                graphics.fillStyle(0x777777);
+                graphics.fillRoundedRect(px + 8, py + 8, width - 16, height - 16, 4);
 
-                // Rotating drill head
+                // Corner hydraulics
+                graphics.fillStyle(0x555555);
+                graphics.fillRect(px + 6, py + 6, 8, 8);
+                graphics.fillRect(px + width - 14, py + 6, 8, 8);
+                graphics.fillRect(px + 6, py + height - 14, 8, 8);
+                graphics.fillRect(px + width - 14, py + height - 14, 8, 8);
+                
+                // Warning stripes on edges
+                graphics.fillStyle(0xffcc00);
+                graphics.fillRect(px + 12, py + 10, width - 24, 3);
+                graphics.fillRect(px + 12, py + height - 13, width - 24, 3);
+
+                // Rotating drill head assembly (larger for 2x2)
                 const drillAngle = (Date.now() / 100) % (Math.PI * 2);
-                graphics.fillStyle(0xaaaaaa);
-                graphics.save();
+                
+                // Large drill housing
+                graphics.fillStyle(0x5a5a5a);
+                graphics.fillCircle(px + width/2, py + height/2, 18);
+                
+                // Spinning drill bits (3 arms)
+                graphics.fillStyle(0xcccccc);
                 for (let i = 0; i < 3; i++) {
                     const a = drillAngle + i * Math.PI * 2 / 3;
-                    graphics.fillRect(
-                        px + TILE_SIZE/2 + Math.cos(a) * 6 - 2,
-                        py + TILE_SIZE/2 + Math.sin(a) * 6 - 2,
-                        4, 4
-                    );
+                    const bitX = px + width/2 + Math.cos(a) * 13;
+                    const bitY = py + height/2 + Math.sin(a) * 13;
+                    graphics.fillCircle(bitX, bitY, 5);
                 }
+                
+                // Center bolt
+                graphics.fillStyle(0x333333);
+                graphics.fillCircle(px + width/2, py + height/2, 8);
                 graphics.fillStyle(0x666666);
-                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 4);
+                graphics.fillCircle(px + width/2, py + height/2, 4);
 
-                drawArrow(px + TILE_SIZE/2, py + TILE_SIZE/2, b.rotation, 0xffff00);
+                // Ore count indicator (dots in corners)
+                if (b.oreCount && b.oreCount > 1) {
+                    graphics.fillStyle(0x4CAF50);
+                    const dotSize = 3;
+                    const positions = [
+                        { x: px + 10, y: py + 10 },
+                        { x: px + width - 10, y: py + 10 },
+                        { x: px + 10, y: py + height - 10 },
+                        { x: px + width - 10, y: py + height - 10 }
+                    ];
+                    for (let i = 0; i < Math.min(b.oreCount, 4); i++) {
+                        graphics.fillCircle(positions[i].x, positions[i].y, dotSize);
+                    }
+                }
 
             } else if (b.type === 'pneumatic-drill') {
-                // Advanced drill
-                graphics.fillStyle(0x8B5A2B);
-                graphics.fillRoundedRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, 4);
+                // Pneumatic drill - 2x2 advanced drill with hydraulic details
+                const width = TILE_SIZE * 2;
+                const height = TILE_SIZE * 2;
+                
+                // Base platform with darker brown
+                graphics.fillStyle(0x6a4a2a);
+                graphics.fillRoundedRect(px + 2, py + 2, width - 4, height - 4, 6);
 
-                // Copper housing
+                // Copper/bronze housing
                 graphics.fillStyle(0xB87333);
-                graphics.fillRoundedRect(px + 4, py + 4, TILE_SIZE - 8, TILE_SIZE - 8, 3);
+                graphics.fillRoundedRect(px + 8, py + 8, width - 16, height - 16, 4);
 
-                // Fast rotating dual drill
+                // Pneumatic cylinders on corners
+                graphics.fillStyle(0x8a6a4a);
+                const cylinderSize = 10;
+                graphics.fillRoundedRect(px + 6, py + 6, cylinderSize, cylinderSize, 2);
+                graphics.fillRoundedRect(px + width - 16, py + 6, cylinderSize, cylinderSize, 2);
+                graphics.fillRoundedRect(px + 6, py + height - 16, cylinderSize, cylinderSize, 2);
+                graphics.fillRoundedRect(px + width - 16, py + height - 16, cylinderSize, cylinderSize, 2);
+
+                // Piston rods extending from cylinders
+                graphics.fillStyle(0xaaaaaa);
+                graphics.fillRect(px + 11, py + 16, 2, 8);
+                graphics.fillRect(px + width - 13, py + 16, 2, 8);
+                graphics.fillRect(px + 11, py + height - 24, 2, 8);
+                graphics.fillRect(px + width - 13, py + height - 24, 2, 8);
+
+                // Fast rotating quad drill (larger for 2x2)
                 const pDrillAngle = (Date.now() / 50) % (Math.PI * 2);
-                graphics.fillStyle(0xcccccc);
+                
+                // Drill housing ring
+                graphics.fillStyle(0x6a5a4a);
+                graphics.fillCircle(px + width/2, py + height/2, 16);
+                
+                // Rotating drill bits (4 sharp blades)
+                graphics.fillStyle(0xdddddd);
                 for (let i = 0; i < 4; i++) {
                     const a = pDrillAngle + i * Math.PI / 2;
-                    graphics.fillRect(
-                        px + TILE_SIZE/2 + Math.cos(a) * 7 - 2,
-                        py + TILE_SIZE/2 + Math.sin(a) * 7 - 2,
-                        4, 4
-                    );
+                    const bitX = px + width/2 + Math.cos(a) * 12;
+                    const bitY = py + height/2 + Math.sin(a) * 12;
+                    // Draw blade shape
+                    graphics.fillRect(bitX - 4, bitY - 2, 8, 4);
+                    graphics.fillCircle(bitX + 2, bitY, 3);
                 }
+                
+                // Center hub
+                graphics.fillStyle(0x555555);
+                graphics.fillCircle(px + width/2, py + height/2, 9);
                 graphics.fillStyle(0x888888);
-                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 5);
+                graphics.fillCircle(px + width/2, py + height/2, 6);
 
-                drawArrow(px + TILE_SIZE/2, py + TILE_SIZE/2, b.rotation, 0xffcc00);
+                // Warning stripes
+                graphics.fillStyle(0xffcc00);
+                graphics.fillRect(px + 12, py + 8, width - 24, 3);
+                graphics.fillRect(px + 8, py + 12, 3, height - 24);
+                graphics.fillRect(px + width - 11, py + 12, 3, height - 24);
+                graphics.fillRect(px + 12, py + height - 11, width - 24, 3);
 
-            } else if (b.type === 'conveyor') {
-                // Conveyor belt base
+                drawArrow(px + width/2, py + height/2, b.rotation, 0xffcc00);
+
+                // Ore count indicator
+                if (b.oreCount && b.oreCount > 1) {
+                    graphics.fillStyle(0x4CAF50);
+                    const dotSize = 3;
+                    const positions = [
+                        { x: px + 12, y: py + height - 12 },
+                        { x: px + width - 12, y: py + height - 12 },
+                        { x: px + 12, y: py + height - 18 },
+                        { x: px + width - 12, y: py + height - 18 }
+                    ];
+                    for (let i = 0; i < Math.min(b.oreCount, 4); i++) {
+                        graphics.fillCircle(positions[i].x, positions[i].y, dotSize);
+                    }
+                }
+
+            } else if (b.type === 'alloy-drill') {
+                // Alloy drill - 2x2 premium drill with advanced design
+                const width = TILE_SIZE * 2;
+                const height = TILE_SIZE * 2;
+                
+                // Premium alloy base
+                graphics.fillStyle(0x7a5a4a);
+                graphics.fillRoundedRect(px + 2, py + 2, width - 4, height - 4, 6);
+
+                // Alloy housing with gradient effect
+                graphics.fillStyle(0xb8967a);
+                graphics.fillRoundedRect(px + 6, py + 6, width - 12, height - 12, 5);
+                
+                // Inner reinforced frame
+                graphics.fillStyle(0xa88868);
+                graphics.fillRoundedRect(px + 10, py + 10, width - 20, height - 20, 4);
+
+                // Decorative corner reinforcements
+                graphics.fillStyle(0xd4a574);
+                const cornerSize = 8;
+                graphics.fillRoundedRect(px + 8, py + 8, cornerSize, cornerSize, 2);
+                graphics.fillRoundedRect(px + width - 16, py + 8, cornerSize, cornerSize, 2);
+                graphics.fillRoundedRect(px + 8, py + height - 16, cornerSize, cornerSize, 2);
+                graphics.fillRoundedRect(px + width - 16, py + height - 16, cornerSize, cornerSize, 2);
+
+                // Ultra-fast rotating drill (4x speed, 6 blades)
+                const aDrillAngle = (Date.now() / 25) % (Math.PI * 2);
+                
+                // Outer drill ring
+                graphics.fillStyle(0x9a8a7a);
+                graphics.fillCircle(px + width/2, py + height/2, 18);
+                
+                // Six rotating cutting blades
+                graphics.fillStyle(0xeeeeee);
+                for (let i = 0; i < 6; i++) {
+                    const a = aDrillAngle + i * Math.PI / 3;
+                    const bladeX = px + width/2 + Math.cos(a) * 14;
+                    const bladeY = py + height/2 + Math.sin(a) * 14;
+                    // Diamond-shaped blade
+                    graphics.fillCircle(bladeX, bladeY, 5);
+                    graphics.fillRect(bladeX - 2, bladeY - 4, 4, 8);
+                }
+                
+                // Central hub with metallic look
+                graphics.fillStyle(0x666666);
+                graphics.fillCircle(px + width/2, py + height/2, 11);
+                graphics.fillStyle(0xaaaaaa);
+                graphics.fillCircle(px + width/2, py + height/2, 8);
+                graphics.fillStyle(0xcccccc);
+                graphics.fillCircle(px + width/2, py + height/2, 5);
+
+                // Premium detail lines
+                graphics.fillStyle(0xd4a574);
+                // Horizontal and vertical accent lines
+                graphics.fillRect(px + width/2 - 1, py + 12, 2, 10);
+                graphics.fillRect(px + width/2 - 1, py + height - 22, 2, 10);
+                graphics.fillRect(px + 12, py + height/2 - 1, 10, 2);
+                graphics.fillRect(px + width - 22, py + height/2 - 1, 10, 2);
+
+                drawArrow(px + width/2, py + height/2, b.rotation, 0xd4a574);
+
+                // Ore count indicator (use brighter green to distinguish from premium dots)
+                if (b.oreCount && b.oreCount > 1) {
+                    graphics.fillStyle(0x44ff44);
+                    const dotSize = 4;
+                    // Position near center top
+                    const startX = px + width/2 - (b.oreCount - 1) * 5;
+                    for (let i = 0; i < Math.min(b.oreCount, 4); i++) {
+                        graphics.fillCircle(startX + i * 10, py + 8, dotSize);
+                    }
+                }
+
+            } else if (b.type === 'graphite-press') {
+                // 2x2 Graphite Press - top-down view
+                const pressW = TILE_SIZE * 2;
+                const pressH = TILE_SIZE * 2;
+                
+                // Main press body - dark gray base
+                graphics.fillStyle(0x1a1a1a);
+                graphics.fillRoundedRect(px + 2, py + 2, pressW - 4, pressH - 4, 6);
+                
+                // Press platform
+                graphics.fillStyle(0x2a2a2a);
+                graphics.fillRoundedRect(px + 6, py + 6, pressW - 12, pressH - 12, 4);
+                
+                // Four compression pistons at corners
+                const pistonSize = b.craftProgress ? 
+                    8 + Math.sin((b.craftProgress / BUILDINGS['graphite-press'].craftTime) * Math.PI * 2) * 3 : 8;
+                graphics.fillStyle(0x555555);
+                graphics.fillCircle(px + 16, py + 16, pistonSize);
+                graphics.fillCircle(px + pressW - 16, py + 16, pistonSize);
+                graphics.fillCircle(px + 16, py + pressH - 16, pistonSize);
+                graphics.fillCircle(px + pressW - 16, py + pressH - 16, pistonSize);
+                
+                // Central compression chamber
+                graphics.fillStyle(0x3a3a3a);
+                graphics.fillRoundedRect(px + pressW/2 - 12, py + pressH/2 - 12, 24, 24, 3);
+                
+                // Compression indicator in center
+                if (b.craftProgress > 0) {
+                    const progress = b.craftProgress / BUILDINGS['graphite-press'].craftTime;
+                    graphics.fillStyle(0x222222, 0.3 + progress * 0.5);
+                    graphics.fillCircle(px + pressW/2, py + pressH/2, 10);
+                }
+                
+                // Storage indicators - coal on left, graphite output on right
+                if (b.coalStored > 0) {
+                    const coalPct = Math.min(1, b.coalStored / 2);
+                    graphics.fillStyle(0x444444);
+                    graphics.fillRect(px + 8, py + pressH/2 - 8, 12 * coalPct, 16);
+                }
+                
+                // Output direction arrow
+                drawArrow(px + pressW/2, py + pressH/2, b.rotation, 0x666666);
+
+            } else if (b.type === 'alloy-factory') {
+                // 2x2 Alloy Factory - highly visible industrial building
+                const factoryW = TILE_SIZE * 2;
+                const factoryH = TILE_SIZE * 2;
+                
+                // Main factory building - dark industrial brown
+                graphics.fillStyle(0x443322);
+                graphics.fillRoundedRect(px + 2, py + 2, factoryW - 4, factoryH - 4, 6);
+                
+                // Factory walls
+                graphics.fillStyle(0x665544);
+                graphics.fillRoundedRect(px + 6, py + 6, factoryW - 12, factoryH - 12, 4);
+                
+                // Lead and titanium input hoppers
+                graphics.fillStyle(0x888899);  // Lead hopper
+                graphics.fillRect(px + 8, py + 8, 12, 10);
+                graphics.fillStyle(0x4a7c9b);  // Titanium hopper
+                graphics.fillRect(px + factoryW - 20, py + 8, 12, 10);
+                
+                // Furnace glow in center
+                const glowIntensity = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+                graphics.fillStyle(0xff6600, glowIntensity * 0.6);
+                graphics.fillCircle(px + factoryW/2, py + factoryH/2, 14);
+                graphics.fillStyle(0xffaa00, glowIntensity * 0.8);
+                graphics.fillCircle(px + factoryW/2, py + factoryH/2, 10);
+                
+                // Chimney with smoke
                 graphics.fillStyle(0x333333);
-                graphics.fillRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6);
+                graphics.fillRect(px + factoryW - 16, py + 4, 8, 12);
+                if (b.powered) {
+                    const smokeOffset = (Date.now() / 100) % 20;
+                    graphics.fillStyle(0x666666, 0.4);
+                    graphics.fillCircle(px + factoryW - 12, py - smokeOffset, 4);
+                    graphics.fillCircle(px + factoryW - 10, py - smokeOffset - 6, 3);
+                }
+                
+                // Alloy output chute
+                graphics.fillStyle(0xb8967a);
+                graphics.fillRect(px + factoryW/2 - 6, py + factoryH - 8, 12, 6);
+                
+                // Windows
+                graphics.fillStyle(0xffcc66, glowIntensity * 0.4);
+                graphics.fillRect(px + 12, py + 24, 8, 10);
+                graphics.fillRect(px + factoryW - 20, py + 24, 8, 10);
+                
+                // Storage indicators
+                if (b.leadStored > 0) {
+                    const leadBar = Math.min(1, b.leadStored / 10);
+                    graphics.fillStyle(0x888899);
+                    graphics.fillRect(px + 4, py + factoryH - 8, 10 * leadBar, 4);
+                }
+                if (b.titaniumStored > 0) {
+                    const titaniumBar = Math.min(1, b.titaniumStored / 10);
+                    graphics.fillStyle(0x4a7c9b);
+                    graphics.fillRect(px + factoryW - 14, py + factoryH - 8, 10 * titaniumBar, 4);
+                }
+                
+                // Craft progress indicator
+                if (b.craftProgress > 0) {
+                    const progress = b.craftProgress / BUILDINGS['alloy-factory'].craftTime;
+                    graphics.fillStyle(0x44ff44);
+                    graphics.fillRect(px + 4, py + 4, (factoryW - 8) * progress, 3);
+                }
+                
+                // Power indicator
+                if (!b.powered) {
+                    graphics.fillStyle(0xff4444, 0.6);
+                    graphics.fillRect(px + factoryW/2 - 8, py + factoryH/2 - 2, 16, 4);
+                    graphics.fillStyle(0xff4444);
+                    graphics.fillCircle(px + 8, py + 8, 3);
+                }
+
+            } else if (b.type === 'miner-constructor') {
+                // 2x2 Miner Constructor
+                const consW = TILE_SIZE * 2;
+                const consH = TILE_SIZE * 2;
+                
+                // Base platform
+                graphics.fillStyle(0x2a4a2a);
+                graphics.fillRoundedRect(px + 2, py + 2, consW - 4, consH - 4, 6);
+                
+                // Construction bay
+                graphics.fillStyle(0x44aa44);
+                graphics.fillRoundedRect(px + 8, py + 8, consW - 16, consH - 16, 4);
+                
+                // Assembly arms
+                graphics.fillStyle(0x666666);
+                graphics.fillRect(px + 10, py + 10, 4, consH - 20);
+                graphics.fillRect(px + consW - 14, py + 10, 4, consH - 20);
+                
+                // Lead and titanium input hoppers
+                graphics.fillStyle(0x888899);  // Lead hopper
+                graphics.fillRect(px + 8, py + 8, 12, 10);
+                graphics.fillStyle(0x4a7c9b);  // Titanium hopper
+                graphics.fillRect(px + consW - 20, py + 8, 12, 10);
+                
+                // Construction platform in center (animated if crafting)
+                if (b.craftProgress > 0) {
+                    const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+                    graphics.fillStyle(0x44ff44, pulse);
+                    graphics.fillCircle(px + consW/2, py + consH/2, 12);
+                    
+                    // Partial drone being built
+                    graphics.fillStyle(0x4CAF50);
+                    graphics.fillCircle(px + consW/2, py + consH/2, 6);
+                }
+                
+                // Storage indicators
+                if (b.leadStored > 0) {
+                    const leadBar = Math.min(1, b.leadStored / 100);
+                    graphics.fillStyle(0x888899);
+                    graphics.fillRect(px + 4, py + consH - 8, 20 * leadBar, 4);
+                }
+                if (b.titaniumStored > 0) {
+                    const titaniumBar = Math.min(1, b.titaniumStored / 100);
+                    graphics.fillStyle(0x4a7c9b);
+                    graphics.fillRect(px + consW - 24, py + consH - 8, 20 * titaniumBar, 4);
+                }
+                
+                // Craft progress indicator
+                if (b.craftProgress > 0) {
+                    const progress = b.craftProgress / BUILDINGS['miner-constructor'].craftTime;
+                    graphics.fillStyle(0x44ff44);
+                    graphics.fillRect(px + 4, py + 4, (consW - 8) * progress, 3);
+                }
+
+            } else if (b.type === 'conveyor' || b.type === 'alloy-conveyor') {
+                // Conveyor belt base - extends to full tile edges
+                // Use different colors for alloy variant
+                const isAlloy = b.type === 'alloy-conveyor';
+                graphics.fillStyle(isAlloy ? 0x4a3a2a : 0x333333);
+                graphics.fillRect(px, py, TILE_SIZE, TILE_SIZE);
 
                 const dir = getDirection(b.rotation);
-                const beltSpeed = 150; // ms per cycle
+                const beltSpeed = isAlloy ? 75 : 150; // Alloy is 2x faster
                 const beltPhase = (Date.now() / beltSpeed) % 1;
 
-                // Animated belt surface with chevron pattern
-                graphics.fillStyle(0x444444);
-                graphics.fillRect(px + 5, py + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+                // Animated belt surface with chevron pattern - full tile
+                graphics.fillStyle(isAlloy ? 0x6a5a4a : 0x444444);
+                graphics.fillRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
 
                 // Moving chevron/arrow indicators
                 for (let i = 0; i < 4; i++) {
@@ -2471,11 +3926,11 @@
 
                     if (dir.x !== 0) {
                         // Horizontal conveyor
-                        arrowX = px + 6 + progress * (TILE_SIZE - 12);
+                        arrowX = px + 4 + progress * (TILE_SIZE - 8);
                         arrowY = py + TILE_SIZE / 2;
 
                         // Draw chevron pointing in direction
-                        graphics.fillStyle(0x666666);
+                        graphics.fillStyle(isAlloy ? 0x8a7a6a : 0x666666);
                         if (dir.x > 0) {
                             graphics.beginPath();
                             graphics.moveTo(arrowX - 3, arrowY - 4);
@@ -2494,9 +3949,9 @@
                     } else {
                         // Vertical conveyor
                         arrowX = px + TILE_SIZE / 2;
-                        arrowY = py + 6 + progress * (TILE_SIZE - 12);
+                        arrowY = py + 4 + progress * (TILE_SIZE - 8);
 
-                        graphics.fillStyle(0x666666);
+                        graphics.fillStyle(isAlloy ? 0x8a7a6a : 0x666666);
                         if (dir.y > 0) {
                             graphics.beginPath();
                             graphics.moveTo(arrowX - 4, arrowY - 3);
@@ -2515,32 +3970,32 @@
                     }
                 }
 
-                // Metallic side rails
-                graphics.fillStyle(0x777777);
+                // Metallic side rails - extend to edges
+                graphics.fillStyle(isAlloy ? 0x9a8a7a : 0x777777);
                 if (dir.x !== 0) {
-                    graphics.fillRect(px + 3, py + 3, TILE_SIZE - 6, 3);
-                    graphics.fillRect(px + 3, py + TILE_SIZE - 6, TILE_SIZE - 6, 3);
+                    graphics.fillRect(px, py, TILE_SIZE, 3);
+                    graphics.fillRect(px, py + TILE_SIZE - 3, TILE_SIZE, 3);
                     // Rail highlights
-                    graphics.fillStyle(0x999999);
-                    graphics.fillRect(px + 3, py + 3, TILE_SIZE - 6, 1);
-                    graphics.fillRect(px + 3, py + TILE_SIZE - 6, TILE_SIZE - 6, 1);
+                    graphics.fillStyle(isAlloy ? 0xbaa99a : 0x999999);
+                    graphics.fillRect(px, py, TILE_SIZE, 1);
+                    graphics.fillRect(px, py + TILE_SIZE - 3, TILE_SIZE, 1);
                 } else {
-                    graphics.fillRect(px + 3, py + 3, 3, TILE_SIZE - 6);
-                    graphics.fillRect(px + TILE_SIZE - 6, py + 3, 3, TILE_SIZE - 6);
+                    graphics.fillRect(px, py, 3, TILE_SIZE);
+                    graphics.fillRect(px + TILE_SIZE - 3, py, 3, TILE_SIZE);
                     // Rail highlights
-                    graphics.fillStyle(0x999999);
-                    graphics.fillRect(px + 3, py + 3, 1, TILE_SIZE - 6);
-                    graphics.fillRect(px + TILE_SIZE - 6, py + 3, 1, TILE_SIZE - 6);
+                    graphics.fillStyle(isAlloy ? 0xbaa99a : 0x999999);
+                    graphics.fillRect(px, py, 1, TILE_SIZE);
+                    graphics.fillRect(px + TILE_SIZE - 3, py, 1, TILE_SIZE);
                 }
 
                 // Roller wheels at edges
-                graphics.fillStyle(0x555555);
+                graphics.fillStyle(isAlloy ? 0x6a5a4a : 0x555555);
                 if (dir.x !== 0) {
-                    graphics.fillCircle(px + 6, py + TILE_SIZE / 2, 2);
-                    graphics.fillCircle(px + TILE_SIZE - 6, py + TILE_SIZE / 2, 2);
+                    graphics.fillCircle(px + 4, py + TILE_SIZE / 2, 2);
+                    graphics.fillCircle(px + TILE_SIZE - 4, py + TILE_SIZE / 2, 2);
                 } else {
-                    graphics.fillCircle(px + TILE_SIZE / 2, py + 6, 2);
-                    graphics.fillCircle(px + TILE_SIZE / 2, py + TILE_SIZE - 6, 2);
+                    graphics.fillCircle(px + TILE_SIZE / 2, py + 4, 2);
+                    graphics.fillCircle(px + TILE_SIZE / 2, py + TILE_SIZE - 4, 2);
                 }
 
             } else if (b.type === 'router') {
@@ -2599,6 +4054,59 @@
                     const coalPct = Math.min(1, b.coalStored / 10);
                     graphics.fillStyle(0x222222);
                     graphics.fillRect(px + 2, py + TILE_SIZE - 6, (TILE_SIZE - 4) * coalPct, 4);
+                }
+
+            } else if (b.type === 'thermal-generator') {
+                // Thermal generator - 2x2 advanced power plant
+                const width = TILE_SIZE * 2;
+                const height = TILE_SIZE * 2;
+
+                // Base structure
+                graphics.fillStyle(0x553300);
+                graphics.fillRoundedRect(px + 2, py + 2, width - 4, height - 4, 6);
+
+                // Reactor core housing
+                graphics.fillStyle(0x774400);
+                graphics.fillRoundedRect(px + 8, py + 8, width - 16, height - 16, 4);
+
+                // Central reactor chamber
+                if (b.active) {
+                    const pulse = Math.sin(Date.now() / 100) * 0.2 + 0.8;
+                    graphics.fillStyle(0xff4400, pulse);
+                    graphics.fillCircle(px + width/2, py + height/2, 20);
+                    graphics.fillStyle(0xff6600, pulse * 0.8);
+                    graphics.fillCircle(px + width/2, py + height/2, 15);
+                    graphics.fillStyle(0xffaa00, pulse * 0.6);
+                    graphics.fillCircle(px + width/2, py + height/2, 10);
+                } else {
+                    graphics.fillStyle(0x444444);
+                    graphics.fillCircle(px + width/2, py + height/2, 20);
+                }
+
+                // Heat vents
+                graphics.fillStyle(0x666666);
+                for (let i = 0; i < 4; i++) {
+                    const angle = i * Math.PI / 2;
+                    const vx = px + width/2 + Math.cos(angle) * 22;
+                    const vy = py + height/2 + Math.sin(angle) * 22;
+                    graphics.fillRect(vx - 2, vy - 6, 4, 12);
+                }
+
+                // Chimneys/exhaust
+                graphics.fillStyle(0x555555);
+                graphics.fillRect(px + 10, py + 2, 8, 10);
+                graphics.fillRect(px + width - 18, py + 2, 8, 10);
+
+                // Resource indicators
+                if (b.coalStored > 0) {
+                    const coalPct = Math.min(1, b.coalStored / 10);
+                    graphics.fillStyle(0x222222);
+                    graphics.fillRect(px + 4, py + height - 10, (width - 8) * coalPct * 0.5, 4);
+                }
+                if (b.leadStored > 0) {
+                    const leadPct = Math.min(1, b.leadStored / 10);
+                    graphics.fillStyle(0x666666);
+                    graphics.fillRect(px + 4 + (width - 8) * 0.5, py + height - 10, (width - 8) * leadPct * 0.5, 4);
                 }
 
             } else if (b.type === 'power-node') {
@@ -2758,6 +4266,39 @@
                     graphics.lineStyle(2, 0xff4444, 0.8);
                     graphics.lineBetween(px + 8, py + 8, px + TILE_SIZE - 8, py + TILE_SIZE - 8);
                     graphics.lineBetween(px + TILE_SIZE - 8, py + 8, px + 8, py + TILE_SIZE - 8);
+                }
+
+            } else if (b.type === 'stormer') {
+                // Stormer turret - sand blaster
+                graphics.fillStyle(0x8a7a6a);
+                graphics.fillRoundedRect(px + 3, py + 3, TILE_SIZE - 6, TILE_SIZE - 6, 4);
+
+                // Turret base
+                graphics.fillStyle(0xa89572);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 12);
+
+                // Sand tank
+                graphics.fillStyle(0xc9b592);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 9);
+
+                // Nozzle pointing toward target
+                const stormerAngle = b.turretAngle !== undefined ? b.turretAngle : -Math.PI/2;
+                const nozzleLength = 13;
+                const nozzleX = px + TILE_SIZE/2 + Math.cos(stormerAngle) * nozzleLength;
+                const nozzleY = py + TILE_SIZE/2 + Math.sin(stormerAngle) * nozzleLength;
+                
+                graphics.lineStyle(4, 0x8a7a6a);
+                graphics.lineBetween(px + TILE_SIZE/2, py + TILE_SIZE/2, nozzleX, nozzleY);
+                
+                // Nozzle tip
+                graphics.fillStyle(0x6a5a4a);
+                graphics.fillCircle(nozzleX, nozzleY, 3);
+
+                // Ammo indicator
+                if (b.ammo !== undefined) {
+                    const ammoPct = Math.min(1, b.ammo / 20);
+                    graphics.fillStyle(ammoPct > 0.3 ? 0xc9b592 : 0xff4444);
+                    graphics.fillRect(px + 3, py + TILE_SIZE - 5, (TILE_SIZE - 6) * ammoPct, 2);
                 }
 
             } else if (b.type === 'wall') {
