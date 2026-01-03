@@ -294,6 +294,21 @@
         #info-panel b {
             color: #4CAF50;
         }
+
+        #game {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+
+        #game canvas {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
     </style>
 </head>
 <body>
@@ -406,6 +421,9 @@
 
         // Camera
         let camera = { x: 0, y: 0 };
+        let zoom = 1.0;
+        const MIN_ZOOM = 0.5;
+        const MAX_ZOOM = 2.0;
 
         // Resources
         let resources = {
@@ -606,6 +624,10 @@
             height: window.innerHeight,
             parent: 'game',
             backgroundColor: '#1a1a2e',
+            scale: {
+                mode: Phaser.Scale.RESIZE,
+                autoCenter: Phaser.Scale.CENTER_BOTH
+            },
             scene: {
                 preload: preload,
                 create: create,
@@ -614,6 +636,11 @@
         };
 
         const game = new Phaser.Game(config);
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            game.scale.resize(window.innerWidth, window.innerHeight);
+        });
         let graphics, scene;
         let keys = {};
 
@@ -635,9 +662,9 @@
             // Set spawn point in corner
             spawnPoint = { x: 3, y: 3 };
 
-            // Center camera on player initially
-            player.x = (coreX + 1) * TILE_SIZE;
-            player.y = (coreY + 1) * TILE_SIZE;
+            // Center camera on player initially (center of 3x3 core)
+            player.x = (coreX + 1.5) * TILE_SIZE;
+            player.y = (coreY + 1.5) * TILE_SIZE;
 
             // Input handling
             this.input.on('pointerdown', handlePointerDown);
@@ -647,13 +674,24 @@
             // Disable context menu
             this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-            // Add mouse wheel rotation
+            // Add mouse wheel rotation and zoom
             this.game.canvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                if (e.deltaY < 0) {
-                    rotation = (rotation + 1) % 4; // Scroll up = rotate clockwise
-                } else if (e.deltaY > 0) {
-                    rotation = (rotation + 3) % 4; // Scroll down = rotate counter-clockwise
+                if (e.ctrlKey || e.metaKey) {
+                    // Zoom with Ctrl+scroll
+                    const zoomSpeed = 0.1;
+                    if (e.deltaY < 0) {
+                        zoom = Math.min(MAX_ZOOM, zoom + zoomSpeed);
+                    } else if (e.deltaY > 0) {
+                        zoom = Math.max(MIN_ZOOM, zoom - zoomSpeed);
+                    }
+                } else {
+                    // Rotate building with scroll
+                    if (e.deltaY < 0) {
+                        rotation = (rotation + 1) % 4; // Scroll up = rotate clockwise
+                    } else if (e.deltaY > 0) {
+                        rotation = (rotation + 3) % 4; // Scroll down = rotate counter-clockwise
+                    }
                 }
             });
 
@@ -669,6 +707,13 @@
 
             this.input.keyboard.on('keydown-R', () => { rotation = (rotation + 1) % 4; });
             this.input.keyboard.on('keydown-SPACE', startWaveEarly);
+
+            // Zoom hotkeys
+            this.input.keyboard.on('keydown-PLUS', () => { zoom = Math.min(MAX_ZOOM, zoom + 0.1); });
+            this.input.keyboard.on('keydown-MINUS', () => { zoom = Math.max(MIN_ZOOM, zoom - 0.1); });
+            this.input.keyboard.on('keydown-EQUAL', () => { zoom = Math.min(MAX_ZOOM, zoom + 0.1); }); // = key (same as +)
+            this.input.keyboard.on('keydown-OPEN_BRACKET', () => { zoom = Math.max(MIN_ZOOM, zoom - 0.1); }); // [ key alternate
+            this.input.keyboard.on('keydown-CLOSED_BRACKET', () => { zoom = Math.min(MAX_ZOOM, zoom + 0.1); }); // ] key alternate
 
             // Building hotkeys
             Object.entries(BUILDINGS).forEach(([type, data]) => {
@@ -715,7 +760,7 @@
         function generateTerrain() {
             // Add randomness seed for variation
             const seed = Math.random() * 1000;
-            
+
             for (let y = 0; y < MAP_HEIGHT; y++) {
                 terrainMap[y] = [];
                 for (let x = 0; x < MAP_WIDTH; x++) {
@@ -724,9 +769,9 @@
                     const noise2 = Math.sin(x * 0.08 + seed * 2) * Math.cos(y * 0.12 + seed * 2) * 0.5;
                     const noise3 = Math.sin(x * 0.25 + seed * 3) * Math.cos(y * 0.2 + seed * 3) * 0.3;
                     const noise4 = Math.sin(x * 0.4 + seed * 4) * Math.cos(y * 0.35 + seed * 4) * 0.2;
-                    
+
                     const noise = noise1 + noise2 + noise3 + noise4;
-                    
+
                     // Add random variation
                     const randomFactor = (Math.random() - 0.5) * 0.3;
                     const finalNoise = noise + randomFactor;
@@ -750,13 +795,86 @@
                 }
             }
 
-            // Clear center area for core
+            // Generate flowing small ponds
+            generatePonds(seed);
+
+            // Clear center area for core (larger for 3x3 core)
             const cx = Math.floor(MAP_WIDTH / 2);
             const cy = Math.floor(MAP_HEIGHT / 2);
-            for (let dy = -3; dy <= 4; dy++) {
-                for (let dx = -3; dx <= 4; dx++) {
+            for (let dy = -4; dy <= 5; dy++) {
+                for (let dx = -4; dx <= 5; dx++) {
                     if (cy + dy >= 0 && cy + dy < MAP_HEIGHT && cx + dx >= 0 && cx + dx < MAP_WIDTH) {
                         terrainMap[cy + dy][cx + dx] = TERRAIN.DARK_STONE;
+                    }
+                }
+            }
+        }
+
+        function generatePonds(seed) {
+            // Generate 4-8 small flowing ponds scattered around the map
+            const pondCount = 4 + Math.floor(Math.random() * 5);
+            const cx = Math.floor(MAP_WIDTH / 2);
+            const cy = Math.floor(MAP_HEIGHT / 2);
+
+            for (let p = 0; p < pondCount; p++) {
+                // Start position - avoid center area where core is placed
+                let startX, startY;
+                let attempts = 0;
+                do {
+                    startX = 8 + Math.floor(Math.random() * (MAP_WIDTH - 16));
+                    startY = 8 + Math.floor(Math.random() * (MAP_HEIGHT - 16));
+                    attempts++;
+                } while (Math.abs(startX - cx) < 8 && Math.abs(startY - cy) < 8 && attempts < 20);
+
+                if (attempts >= 20) continue;
+
+                // Create a flowing pond using a random walk with organic shapes
+                const pondLength = 8 + Math.floor(Math.random() * 12); // 8-20 tiles long
+                const pondWidth = 2 + Math.floor(Math.random() * 2); // 2-3 tiles wide
+
+                let curX = startX;
+                let curY = startY;
+
+                // Random flow direction with slight bias
+                let flowAngle = Math.random() * Math.PI * 2;
+
+                for (let i = 0; i < pondLength; i++) {
+                    // Place water in an organic blob around current position
+                    for (let dy = -pondWidth; dy <= pondWidth; dy++) {
+                        for (let dx = -pondWidth; dx <= pondWidth; dx++) {
+                            const px = Math.floor(curX + dx);
+                            const py = Math.floor(curY + dy);
+
+                            // Skip if out of bounds or too close to edges
+                            if (px < 5 || px >= MAP_WIDTH - 5 || py < 5 || py >= MAP_HEIGHT - 5) continue;
+
+                            // Skip if too close to center (core area)
+                            if (Math.abs(px - cx) < 6 && Math.abs(py - cy) < 6) continue;
+
+                            // Organic shape - use distance and noise for natural edges
+                            const dist = Math.sqrt(dx * dx + dy * dy);
+                            const noiseVal = Math.sin(px * 0.5 + seed + p) * Math.cos(py * 0.5 + seed + p);
+                            const threshold = pondWidth * (0.7 + noiseVal * 0.3);
+
+                            if (dist <= threshold) {
+                                terrainMap[py][px] = TERRAIN.WATER;
+                            } else if (dist <= threshold + 1 && Math.random() < 0.5) {
+                                // Sand around pond edges
+                                if (terrainMap[py][px] !== TERRAIN.WATER) {
+                                    terrainMap[py][px] = TERRAIN.SAND;
+                                }
+                            }
+                        }
+                    }
+
+                    // Move along flow direction with some randomness
+                    flowAngle += (Math.random() - 0.5) * 0.8; // Gentle turns
+                    curX += Math.cos(flowAngle) * 1.5;
+                    curY += Math.sin(flowAngle) * 1.5;
+
+                    // Occasionally widen or narrow
+                    if (Math.random() < 0.2) {
+                        // Small variation handled by noise in the loop above
                     }
                 }
             }
@@ -772,21 +890,21 @@
                 }
             }
 
-            // Generate ore clusters
+            // Generate ore clusters (increased counts and sizes for better visibility)
             const oreTypes = [
-                { type: 'copper', count: 12, size: 8 },
-                { type: 'lead', count: 8, size: 6 },
-                { type: 'coal', count: 6, size: 5 },
-                { type: 'titanium', count: 3, size: 4 }
+                { type: 'copper', count: 18, size: 14 },
+                { type: 'lead', count: 14, size: 12 },
+                { type: 'coal', count: 10, size: 10 },
+                { type: 'titanium', count: 6, size: 8 }
             ];
 
             oreTypes.forEach(ore => {
                 for (let i = 0; i < ore.count; i++) {
-                    const cx = Math.floor(Math.random() * (MAP_WIDTH - 6)) + 3;
-                    const cy = Math.floor(Math.random() * (MAP_HEIGHT - 6)) + 3;
+                    const cx = Math.floor(Math.random() * (MAP_WIDTH - 8)) + 4;
+                    const cy = Math.floor(Math.random() * (MAP_HEIGHT - 8)) + 4;
 
                     for (let j = 0; j < ore.size; j++) {
-                        const ox = cx + Math.floor(Math.random() * 4) - 2;
+                        const ox = cx + Math.floor(Math.random() * 5) - 2;
                         const oy = cy + Math.floor(Math.random() * 4) - 2;
                         if (ox >= 0 && ox < MAP_WIDTH && oy >= 0 && oy < MAP_HEIGHT) {
                             if (terrainMap[oy][ox] !== TERRAIN.WATER) {
@@ -799,8 +917,8 @@
         }
 
         function placeCore(x, y) {
-            for (let dy = 0; dy < 2; dy++) {
-                for (let dx = 0; dx < 2; dx++) {
+            for (let dy = 0; dy < 3; dy++) {
+                for (let dx = 0; dx < 3; dx++) {
                     map[y + dy][x + dx] = 'core';
                     oreMap[y + dy][x + dx] = null;
                 }
@@ -808,7 +926,7 @@
             buildings.push({
                 type: 'core',
                 x: x, y: y,
-                width: 2, height: 2,
+                width: 3, height: 3,
                 health: maxCoreHealth,
                 maxHealth: maxCoreHealth
             });
@@ -1000,8 +1118,8 @@
 
         function screenToWorld(screenX, screenY) {
             return {
-                x: screenX + camera.x,
-                y: screenY + camera.y
+                x: screenX / zoom + camera.x,
+                y: screenY / zoom + camera.y
             };
         }
 
@@ -1090,7 +1208,7 @@
             if (tile.x >= 0 && tile.x < MAP_WIDTH && tile.y >= 0 && tile.y < MAP_HEIGHT) {
                 const building = buildings.find(b =>
                     (b.x === tile.x && b.y === tile.y) ||
-                    (b.type === 'core' && tile.x >= b.x && tile.x < b.x + 2 && tile.y >= b.y && tile.y < b.y + 2)
+                    (b.type === 'core' && tile.x >= b.x && tile.x < b.x + 3 && tile.y >= b.y && tile.y < b.y + 3)
                 );
 
                 if (building) {
@@ -1854,7 +1972,7 @@
                     
                     const target = buildings.find(t =>
                         t.x === pos.x && t.y === pos.y ||
-                        (t.type === 'core' && pos.x >= t.x && pos.x < t.x + 2 && pos.y >= t.y && pos.y < t.y + 2)
+                        (t.type === 'core' && pos.x >= t.x && pos.x < t.x + 3 && pos.y >= t.y && pos.y < t.y + 3)
                     );
                     
                     if (target && tryOutputToTarget(building, target, pos.x, pos.y, itemType)) {
@@ -2510,8 +2628,8 @@
             // Respawn at core
             const core = buildings.find(b => b.type === 'core');
             if (core) {
-                player.x = (core.x + 1) * TILE_SIZE;
-                player.y = (core.y + 1) * TILE_SIZE;
+                player.x = (core.x + 1.5) * TILE_SIZE;
+                player.y = (core.y + 1.5) * TILE_SIZE;
             }
 
             player.health = player.maxHealth;
@@ -2598,21 +2716,26 @@
                 player.y = Math.max(TILE_SIZE, Math.min(MAP_HEIGHT * TILE_SIZE - TILE_SIZE, player.y));
             }
 
-            // Camera follows player
-            camera.x = player.x - window.innerWidth / 2;
-            camera.y = player.y - window.innerHeight / 2;
+            // Camera follows player (adjusted for zoom)
+            const viewWidth = window.innerWidth / zoom;
+            const viewHeight = window.innerHeight / zoom;
+            camera.x = player.x - viewWidth / 2;
+            camera.y = player.y - viewHeight / 2;
 
             // Clamp camera
-            camera.x = Math.max(0, Math.min(MAP_WIDTH * TILE_SIZE - window.innerWidth, camera.x));
-            camera.y = Math.max(0, Math.min(MAP_HEIGHT * TILE_SIZE - window.innerHeight, camera.y));
+            camera.x = Math.max(0, Math.min(MAP_WIDTH * TILE_SIZE - viewWidth, camera.x));
+            camera.y = Math.max(0, Math.min(MAP_HEIGHT * TILE_SIZE - viewHeight, camera.y));
 
             graphics.clear();
 
-            // Calculate visible tile range
+            // Apply zoom transform
+            graphics.setScale(zoom);
+
+            // Calculate visible tile range (adjusted for zoom)
             const startTileX = Math.max(0, Math.floor(camera.x / TILE_SIZE) - 1);
             const startTileY = Math.max(0, Math.floor(camera.y / TILE_SIZE) - 1);
-            const endTileX = Math.min(MAP_WIDTH, Math.ceil((camera.x + window.innerWidth) / TILE_SIZE) + 1);
-            const endTileY = Math.min(MAP_HEIGHT, Math.ceil((camera.y + window.innerHeight) / TILE_SIZE) + 1);
+            const endTileX = Math.min(MAP_WIDTH, Math.ceil((camera.x + viewWidth) / TILE_SIZE) + 1);
+            const endTileY = Math.min(MAP_HEIGHT, Math.ceil((camera.y + viewHeight) / TILE_SIZE) + 1);
 
             // Draw terrain
             for (let y = startTileY; y < endTileY; y++) {
@@ -2638,6 +2761,8 @@
                         case TERRAIN.DARK_STONE:
                             color = ((x + y) % 2 === 0) ? 0x3a3a4a : 0x33333f;
                             break;
+                        default:
+                            color = 0x2d4a2d; // Fallback to grass
                     }
 
                     graphics.fillStyle(color);
@@ -2645,7 +2770,7 @@
                 }
             }
 
-            // Draw ore deposits (optimized)
+            // Draw ore deposits (enhanced visibility)
             for (let y = startTileY; y < endTileY; y++) {
                 for (let x = startTileX; x < endTileX; x++) {
                     if (oreMap[y][x]) {
@@ -2653,35 +2778,58 @@
                         const screenY = y * TILE_SIZE - camera.y;
                         const ore = oreMap[y][x];
                         const color = getOreColor(ore);
-                        
-                        // Base ore patch
-                        graphics.fillStyle(color, 0.4);
-                        graphics.fillRoundedRect(screenX + 4, screenY + 4, TILE_SIZE - 8, TILE_SIZE - 8, 3);
-                        
-                        // Simplified crystal texture (reduced from 3-5 to 2-3 crystals)
+
+                        // Outer glow for better visibility
+                        graphics.fillStyle(color, 0.25);
+                        graphics.fillRoundedRect(screenX + 1, screenY + 1, TILE_SIZE - 2, TILE_SIZE - 2, 4);
+
+                        // Base ore patch (larger and more opaque)
+                        graphics.fillStyle(color, 0.6);
+                        graphics.fillRoundedRect(screenX + 3, screenY + 3, TILE_SIZE - 6, TILE_SIZE - 6, 4);
+
+                        // Crystal texture (more crystals for visibility)
                         const seed = x * 13 + y * 17;
-                        const numCrystals = ore === 'titanium' ? 3 : 2;
-                        
+                        const numCrystals = ore === 'titanium' ? 5 : (ore === 'coal' ? 4 : 4);
+
                         for (let i = 0; i < numCrystals; i++) {
-                            const cx = screenX + 8 + ((seed * (i + 1) * 7) % (TILE_SIZE - 16));
-                            const cy = screenY + 8 + ((seed * (i + 1) * 11) % (TILE_SIZE - 16));
-                            const size = 3 + ((seed * i) % 3);
-                            
-                            graphics.fillStyle(color, 0.9);
+                            const cx = screenX + 6 + ((seed * (i + 1) * 7) % (TILE_SIZE - 12));
+                            const cy = screenY + 6 + ((seed * (i + 1) * 11) % (TILE_SIZE - 12));
+                            const size = 3 + ((seed * i) % 4);
+
+                            graphics.fillStyle(color, 1.0);
                             graphics.fillCircle(cx, cy, size);
+
+                            // Highlight on crystals
+                            graphics.fillStyle(0xffffff, 0.4);
+                            graphics.fillCircle(cx - 1, cy - 1, size * 0.4);
                         }
-                        
-                        // Simplified ore-specific details
+
+                        // Enhanced ore-specific details
                         if (ore === 'copper') {
-                            graphics.fillStyle(0xffaa66, 0.2);
-                            graphics.fillRect(screenX + 6, screenY + 6, TILE_SIZE - 12, TILE_SIZE - 12);
+                            // Copper veins
+                            graphics.fillStyle(0xffcc88, 0.5);
+                            graphics.fillRect(screenX + 5, screenY + TILE_SIZE/2 - 1, TILE_SIZE - 10, 3);
+                            graphics.fillRect(screenX + TILE_SIZE/2 - 1, screenY + 5, 3, TILE_SIZE - 10);
                         } else if (ore === 'lead') {
-                            graphics.fillStyle(0xaaaaaa, 0.25);
-                            graphics.fillRect(screenX + 7, screenY + 7, TILE_SIZE - 14, 2);
+                            // Lead striations
+                            graphics.fillStyle(0xcccccc, 0.5);
+                            graphics.fillRect(screenX + 5, screenY + 8, TILE_SIZE - 10, 2);
+                            graphics.fillRect(screenX + 5, screenY + TILE_SIZE - 10, TILE_SIZE - 10, 2);
                         } else if (ore === 'titanium') {
-                            graphics.fillStyle(0x66aaff, 0.25);
+                            // Titanium glow
+                            graphics.fillStyle(0x88ccff, 0.4);
+                            graphics.fillCircle(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, 8);
+                            graphics.fillStyle(0xaaddff, 0.6);
                             graphics.fillCircle(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, 5);
+                        } else if (ore === 'coal') {
+                            // Coal dark center
+                            graphics.fillStyle(0x222222, 0.6);
+                            graphics.fillRoundedRect(screenX + 8, screenY + 8, TILE_SIZE - 16, TILE_SIZE - 16, 3);
                         }
+
+                        // Border outline for all ores
+                        graphics.lineStyle(1, color, 0.8);
+                        graphics.strokeRoundedRect(screenX + 2, screenY + 2, TILE_SIZE - 4, TILE_SIZE - 4, 4);
                     }
                 }
             }
@@ -2942,8 +3090,8 @@
 
                 // If no target found in radius, default to core
                 if (!targetBuilding && core) {
-                    targetX = (core.x + 1) * TILE_SIZE;
-                    targetY = (core.y + 1) * TILE_SIZE;
+                    targetX = (core.x + 1.5) * TILE_SIZE;
+                    targetY = (core.y + 1.5) * TILE_SIZE;
                     targetBuilding = core;
                 }
 
@@ -3817,67 +3965,77 @@
                 graphics.strokeCircle(screenX, screenY, 25);
             }
 
-            // Save graphics state and rotate
-            graphics.save();
-            graphics.translate(screenX, screenY);
-            graphics.rotate(player.angle);
-
-            // Shadow (slightly offset)
+            // Shadow
             graphics.fillStyle(0x000000, 0.3);
-            graphics.fillEllipse(2, 3, 16, 10);
+            graphics.fillEllipse(screenX + 2, screenY + 3, 16, 10);
 
-            // Industrial ship body - rectangular with angled front
-            // Main hull body
+            // Calculate rotation for ship direction
+            const cos = Math.cos(player.angle);
+            const sin = Math.sin(player.angle);
+
+            // Helper function to rotate a point around the ship center
+            function rotatePoint(px, py) {
+                return {
+                    x: screenX + px * cos - py * sin,
+                    y: screenY + px * sin + py * cos
+                };
+            }
+
+            // Main hull body (drawn as a polygon for rotation)
             graphics.fillStyle(0x555566);
-            graphics.fillRect(-10, -8, 20, 16);
-
-            // Front angled section
-            graphics.fillStyle(0x666677);
+            const hull1 = rotatePoint(-10, -8);
+            const hull2 = rotatePoint(10, -8);
+            const hull3 = rotatePoint(10, 8);
+            const hull4 = rotatePoint(-10, 8);
             graphics.beginPath();
-            graphics.moveTo(10, -8);  // right top
-            graphics.lineTo(16, -4);  // nose right
-            graphics.lineTo(16, 4);   // nose left
-            graphics.lineTo(10, 8);   // left bottom
+            graphics.moveTo(hull1.x, hull1.y);
+            graphics.lineTo(hull2.x, hull2.y);
+            graphics.lineTo(hull3.x, hull3.y);
+            graphics.lineTo(hull4.x, hull4.y);
             graphics.closePath();
             graphics.fillPath();
 
-            // Dark panel lines for industrial look
-            graphics.lineStyle(1, 0x333344);
-            graphics.lineBetween(-10, -3, 10, -3);
-            graphics.lineBetween(-10, 3, 10, 3);
-            graphics.lineBetween(0, -8, 0, 8);
+            // Front angled section (nose)
+            graphics.fillStyle(0x666677);
+            const nose1 = rotatePoint(10, -8);
+            const nose2 = rotatePoint(16, -4);
+            const nose3 = rotatePoint(16, 4);
+            const nose4 = rotatePoint(10, 8);
+            graphics.beginPath();
+            graphics.moveTo(nose1.x, nose1.y);
+            graphics.lineTo(nose2.x, nose2.y);
+            graphics.lineTo(nose3.x, nose3.y);
+            graphics.lineTo(nose4.x, nose4.y);
+            graphics.closePath();
+            graphics.fillPath();
 
-            // Cockpit window (small and boxy)
+            // Cockpit window
             graphics.fillStyle(0x447788, 0.8);
-            graphics.fillRect(6, -3, 6, 6);
-            graphics.lineStyle(1, 0x223344);
-            graphics.strokeRect(6, -3, 6, 6);
-
-            // Side thrusters (industrial blocks)
-            graphics.fillStyle(0x444455);
-            graphics.fillRect(-12, -6, 3, 4);
-            graphics.fillRect(-12, 2, 3, 4);
+            const cockpit = rotatePoint(9, 0);
+            graphics.fillCircle(cockpit.x, cockpit.y, 4);
 
             // Engine glow
             const engineGlow = Math.sin(Date.now() / 40) * 0.3 + 0.7;
             const isMoving = keys.W?.isDown || keys.S?.isDown || keys.A?.isDown || keys.D?.isDown;
             const glowIntensity = isMoving ? 1 : 0.5;
 
+            // Engine flames (at the back)
+            const eng1 = rotatePoint(-14, -4);
+            const eng2 = rotatePoint(-14, 4);
             graphics.fillStyle(0xff4400, engineGlow * glowIntensity * 0.7);
-            graphics.fillRect(-14, -5, 2, 3);
-            graphics.fillRect(-14, 2, 2, 3);
+            graphics.fillCircle(eng1.x, eng1.y, 3 + (isMoving ? 2 : 0));
+            graphics.fillCircle(eng2.x, eng2.y, 3 + (isMoving ? 2 : 0));
 
             graphics.fillStyle(0xffaa00, engineGlow * glowIntensity * 0.5);
-            graphics.fillRect(-13, -4, 1, 2);
-            graphics.fillRect(-13, 2, 1, 2);
+            graphics.fillCircle(eng1.x, eng1.y, 2);
+            graphics.fillCircle(eng2.x, eng2.y, 2);
 
-            // Warning stripes on front
+            // Warning lights on front
             graphics.fillStyle(0xffcc00);
-            graphics.fillRect(10, -6, 2, 2);
-            graphics.fillRect(10, 4, 2, 2);
-
-            // Restore graphics state
-            graphics.restore();
+            const warn1 = rotatePoint(12, -5);
+            const warn2 = rotatePoint(12, 5);
+            graphics.fillCircle(warn1.x, warn1.y, 2);
+            graphics.fillCircle(warn2.x, warn2.y, 2);
 
             // Mining laser - yellow beam to target ore (wider and brighter)
             if (miningMode && miningTarget) {
@@ -3917,33 +4075,61 @@
             const py = screenY;
 
             if (b.type === 'core') {
-                // Large detailed core
+                // Large detailed 3x3 core
+                const coreSize = TILE_SIZE * 3;
+                const centerX = px + coreSize / 2;
+                const centerY = py + coreSize / 2;
+
+                // Base platform
                 graphics.fillStyle(0x1a3a1a);
-                graphics.fillRoundedRect(px + 2, py + 2, TILE_SIZE * 2 - 4, TILE_SIZE * 2 - 4, 8);
+                graphics.fillRoundedRect(px + 2, py + 2, coreSize - 4, coreSize - 4, 10);
 
                 // Outer ring
                 graphics.fillStyle(0x2d5a2d);
-                graphics.fillRoundedRect(px + 6, py + 6, TILE_SIZE * 2 - 12, TILE_SIZE * 2 - 12, 6);
+                graphics.fillRoundedRect(px + 8, py + 8, coreSize - 16, coreSize - 16, 8);
 
                 // Inner platform
                 graphics.fillStyle(0x4CAF50);
-                graphics.fillRoundedRect(px + 12, py + 12, TILE_SIZE * 2 - 24, TILE_SIZE * 2 - 24, 4);
+                graphics.fillRoundedRect(px + 16, py + 16, coreSize - 32, coreSize - 32, 6);
 
-                // Core crystal
+                // Secondary inner ring
+                graphics.fillStyle(0x3d8b3d);
+                graphics.fillRoundedRect(px + 24, py + 24, coreSize - 48, coreSize - 48, 4);
+
+                // Core crystal (larger)
                 graphics.fillStyle(0x81C784);
-                graphics.fillCircle(px + TILE_SIZE, py + TILE_SIZE, 12);
+                graphics.fillCircle(centerX, centerY, 18);
 
                 // Glow effect
                 const glow = Math.sin(Date.now() / 200) * 0.2 + 0.4;
                 graphics.fillStyle(0xaaffaa, glow);
-                graphics.fillCircle(px + TILE_SIZE, py + TILE_SIZE, 16);
+                graphics.fillCircle(centerX, centerY, 24);
 
-                // Resource intake ports
+                // Inner glow
+                graphics.fillStyle(0xccffcc, glow * 0.7);
+                graphics.fillCircle(centerX, centerY, 12);
+
+                // Resource intake ports (on all 4 sides)
                 graphics.fillStyle(0x333333);
-                graphics.fillRect(px + TILE_SIZE - 3, py + 2, 6, 4);
-                graphics.fillRect(px + TILE_SIZE - 3, py + TILE_SIZE * 2 - 6, 6, 4);
-                graphics.fillRect(px + 2, py + TILE_SIZE - 3, 4, 6);
-                graphics.fillRect(px + TILE_SIZE * 2 - 6, py + TILE_SIZE - 3, 4, 6);
+                // Top ports
+                graphics.fillRect(centerX - 12, py + 2, 8, 5);
+                graphics.fillRect(centerX + 4, py + 2, 8, 5);
+                // Bottom ports
+                graphics.fillRect(centerX - 12, py + coreSize - 7, 8, 5);
+                graphics.fillRect(centerX + 4, py + coreSize - 7, 8, 5);
+                // Left ports
+                graphics.fillRect(px + 2, centerY - 12, 5, 8);
+                graphics.fillRect(px + 2, centerY + 4, 5, 8);
+                // Right ports
+                graphics.fillRect(px + coreSize - 7, centerY - 12, 5, 8);
+                graphics.fillRect(px + coreSize - 7, centerY + 4, 5, 8);
+
+                // Corner decorations
+                graphics.fillStyle(0x4CAF50);
+                graphics.fillCircle(px + 14, py + 14, 4);
+                graphics.fillCircle(px + coreSize - 14, py + 14, 4);
+                graphics.fillCircle(px + 14, py + coreSize - 14, 4);
+                graphics.fillCircle(px + coreSize - 14, py + coreSize - 14, 4);
 
             } else if (b.type === 'drill') {
                 // Industrial mining drill - 2x2 with better visuals
@@ -4312,9 +4498,13 @@
                     graphics.fillCircle(centerX - 6, centerY - 6, 3);
                     graphics.fillCircle(centerX + 6, centerY - 6, 3);
 
-                    // Scanning line animation (back and forth quickly)
-                    const scanTime = Date.now() % 800; // 800ms loop (faster)
-                    const scanProgress = scanTime < 400 ? scanTime / 400 : (800 - scanTime) / 400; // Back and forth
+                    // Scanning line animation with ease-in-out (slow at edges, fast in middle)
+                    const scanTime = Date.now() % 1200; // 1200ms loop
+                    let scanLinear = scanTime < 600 ? scanTime / 600 : (1200 - scanTime) / 600; // Back and forth 0-1
+                    // Apply ease-in-out (cubic bezier approximation: slow-fast-slow)
+                    const scanProgress = scanLinear < 0.5
+                        ? 4 * scanLinear * scanLinear * scanLinear
+                        : 1 - Math.pow(-2 * scanLinear + 2, 3) / 2;
                     const scanX = px + 12 + (consW - 24) * scanProgress;
 
                     // Vertical scanning line
@@ -4351,97 +4541,190 @@
                 }
 
             } else if (b.type === 'conveyor' || b.type === 'alloy-conveyor') {
-                // Conveyor belt base - extends to full tile edges
-                // Use different colors for alloy variant
+                // Conveyor belt with proper turns
                 const isAlloy = b.type === 'alloy-conveyor';
-                graphics.fillStyle(isAlloy ? 0x4a3a2a : 0x333333);
-                graphics.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-
                 const dir = getDirection(b.rotation);
-                const beltSpeed = isAlloy ? 75 : 150; // Alloy is 2x faster
+                const beltSpeed = isAlloy ? 75 : 150;
                 const beltPhase = (Date.now() / beltSpeed) % 1;
 
-                // Animated belt surface with chevron pattern - full tile
-                graphics.fillStyle(isAlloy ? 0x6a5a4a : 0x444444);
-                graphics.fillRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+                // Detect neighboring conveyors to determine if this is a turn
+                const inputDir = { x: -dir.x, y: -dir.y }; // Opposite of output
+                const leftDir = { x: dir.y, y: -dir.x };
+                const rightDir = { x: -dir.y, y: dir.x };
 
-                // Moving chevron/arrow indicators
-                for (let i = 0; i < 4; i++) {
-                    const progress = ((i / 4 + beltPhase) % 1);
-                    let arrowX, arrowY;
+                // Check for input conveyor (one that outputs to this tile)
+                const getConveyorAt = (tx, ty) => {
+                    return buildings.find(ob =>
+                        (ob.type === 'conveyor' || ob.type === 'alloy-conveyor') &&
+                        ob.x === tx && ob.y === ty
+                    );
+                };
 
-                    if (dir.x !== 0) {
-                        // Horizontal conveyor
-                        arrowX = px + 4 + progress * (TILE_SIZE - 8);
-                        arrowY = py + TILE_SIZE / 2;
+                const backConveyor = getConveyorAt(b.x + inputDir.x, b.y + inputDir.y);
+                const leftConveyor = getConveyorAt(b.x + leftDir.x, b.y + leftDir.y);
+                const rightConveyor = getConveyorAt(b.x + rightDir.x, b.y + rightDir.y);
 
-                        // Draw chevron pointing in direction
-                        graphics.fillStyle(isAlloy ? 0x8a7a6a : 0x666666);
-                        if (dir.x > 0) {
+                // Check if neighbor outputs to us
+                const outputsToUs = (neighbor, fromDir) => {
+                    if (!neighbor) return false;
+                    const nDir = getDirection(neighbor.rotation);
+                    return nDir.x === -fromDir.x && nDir.y === -fromDir.y;
+                };
+
+                const hasBackInput = backConveyor && outputsToUs(backConveyor, inputDir);
+                const hasLeftInput = leftConveyor && outputsToUs(leftConveyor, leftDir);
+                const hasRightInput = rightConveyor && outputsToUs(rightConveyor, rightDir);
+
+                // Determine conveyor type: straight, turn-left, turn-right
+                let isTurnLeft = !hasBackInput && hasLeftInput && !hasRightInput;
+                let isTurnRight = !hasBackInput && hasRightInput && !hasLeftInput;
+
+                // Colors
+                const baseColor = isAlloy ? 0x4a3a2a : 0x333333;
+                const beltColor = isAlloy ? 0x6a5a4a : 0x444444;
+                const arrowColor = isAlloy ? 0x8a7a6a : 0x666666;
+                const railColor = isAlloy ? 0x9a8a7a : 0x777777;
+                const highlightColor = isAlloy ? 0xbaa99a : 0x999999;
+
+                // Base
+                graphics.fillStyle(baseColor);
+                graphics.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+
+                const cx = px + TILE_SIZE / 2;
+                const cy = py + TILE_SIZE / 2;
+
+                if (isTurnLeft || isTurnRight) {
+                    // Draw curved conveyor turn
+                    graphics.fillStyle(beltColor);
+
+                    // Determine corner position based on rotation and turn direction
+                    let cornerX, cornerY, startAngle, endAngle;
+                    const radius = TILE_SIZE / 2;
+                    const innerRadius = TILE_SIZE / 2 - 10;
+                    const outerRadius = TILE_SIZE / 2 + 10;
+
+                    if (b.rotation === 0) { // Facing right
+                        if (isTurnLeft) { cornerX = px + TILE_SIZE; cornerY = py; startAngle = Math.PI / 2; endAngle = Math.PI; }
+                        else { cornerX = px + TILE_SIZE; cornerY = py + TILE_SIZE; startAngle = Math.PI; endAngle = Math.PI * 1.5; }
+                    } else if (b.rotation === 1) { // Facing down
+                        if (isTurnLeft) { cornerX = px + TILE_SIZE; cornerY = py + TILE_SIZE; startAngle = Math.PI; endAngle = Math.PI * 1.5; }
+                        else { cornerX = px; cornerY = py + TILE_SIZE; startAngle = Math.PI * 1.5; endAngle = Math.PI * 2; }
+                    } else if (b.rotation === 2) { // Facing left
+                        if (isTurnLeft) { cornerX = px; cornerY = py + TILE_SIZE; startAngle = Math.PI * 1.5; endAngle = Math.PI * 2; }
+                        else { cornerX = px; cornerY = py; startAngle = 0; endAngle = Math.PI / 2; }
+                    } else { // Facing up
+                        if (isTurnLeft) { cornerX = px; cornerY = py; startAngle = 0; endAngle = Math.PI / 2; }
+                        else { cornerX = px + TILE_SIZE; cornerY = py; startAngle = Math.PI / 2; endAngle = Math.PI; }
+                    }
+
+                    // Draw curved belt surface
+                    graphics.fillStyle(beltColor);
+                    graphics.beginPath();
+                    graphics.arc(cornerX, cornerY, outerRadius - 3, startAngle, endAngle, false);
+                    graphics.arc(cornerX, cornerY, innerRadius + 3, endAngle, startAngle, true);
+                    graphics.closePath();
+                    graphics.fillPath();
+
+                    // Inner rail (curved)
+                    graphics.lineStyle(3, railColor, 1);
+                    graphics.beginPath();
+                    graphics.arc(cornerX, cornerY, innerRadius + 1, startAngle, endAngle, false);
+                    graphics.strokePath();
+
+                    // Outer rail (curved)
+                    graphics.beginPath();
+                    graphics.arc(cornerX, cornerY, outerRadius - 1, startAngle, endAngle, false);
+                    graphics.strokePath();
+
+                    // Curved arrows
+                    graphics.fillStyle(arrowColor);
+                    for (let i = 0; i < 3; i++) {
+                        const progress = ((i / 3 + beltPhase) % 1);
+                        const angle = startAngle + (endAngle - startAngle) * progress;
+                        const midRadius = (innerRadius + outerRadius) / 2;
+                        const arrowX = cornerX + Math.cos(angle) * midRadius;
+                        const arrowY = cornerY + Math.sin(angle) * midRadius;
+
+                        // Arrow pointing along curve
+                        const tangentAngle = angle + Math.PI / 2;
+                        graphics.beginPath();
+                        graphics.moveTo(arrowX + Math.cos(tangentAngle - 2.5) * 4, arrowY + Math.sin(tangentAngle - 2.5) * 4);
+                        graphics.lineTo(arrowX + Math.cos(tangentAngle) * 4, arrowY + Math.sin(tangentAngle) * 4);
+                        graphics.lineTo(arrowX + Math.cos(tangentAngle + 2.5) * 4, arrowY + Math.sin(tangentAngle + 2.5) * 4);
+                        graphics.closePath();
+                        graphics.fillPath();
+                    }
+
+                } else {
+                    // Straight conveyor
+                    graphics.fillStyle(beltColor);
+                    graphics.fillRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+
+                    // Moving chevron/arrow indicators
+                    for (let i = 0; i < 4; i++) {
+                        const progress = ((i / 4 + beltPhase) % 1);
+                        let arrowX, arrowY;
+
+                        if (dir.x !== 0) {
+                            arrowX = px + 4 + progress * (TILE_SIZE - 8);
+                            arrowY = py + TILE_SIZE / 2;
+                            graphics.fillStyle(arrowColor);
                             graphics.beginPath();
-                            graphics.moveTo(arrowX - 3, arrowY - 4);
-                            graphics.lineTo(arrowX + 2, arrowY);
-                            graphics.lineTo(arrowX - 3, arrowY + 4);
+                            if (dir.x > 0) {
+                                graphics.moveTo(arrowX - 3, arrowY - 4);
+                                graphics.lineTo(arrowX + 2, arrowY);
+                                graphics.lineTo(arrowX - 3, arrowY + 4);
+                            } else {
+                                graphics.moveTo(arrowX + 3, arrowY - 4);
+                                graphics.lineTo(arrowX - 2, arrowY);
+                                graphics.lineTo(arrowX + 3, arrowY + 4);
+                            }
                             graphics.closePath();
                             graphics.fillPath();
                         } else {
+                            arrowX = px + TILE_SIZE / 2;
+                            arrowY = py + 4 + progress * (TILE_SIZE - 8);
+                            graphics.fillStyle(arrowColor);
                             graphics.beginPath();
-                            graphics.moveTo(arrowX + 3, arrowY - 4);
-                            graphics.lineTo(arrowX - 2, arrowY);
-                            graphics.lineTo(arrowX + 3, arrowY + 4);
-                            graphics.closePath();
-                            graphics.fillPath();
-                        }
-                    } else {
-                        // Vertical conveyor
-                        arrowX = px + TILE_SIZE / 2;
-                        arrowY = py + 4 + progress * (TILE_SIZE - 8);
-
-                        graphics.fillStyle(isAlloy ? 0x8a7a6a : 0x666666);
-                        if (dir.y > 0) {
-                            graphics.beginPath();
-                            graphics.moveTo(arrowX - 4, arrowY - 3);
-                            graphics.lineTo(arrowX, arrowY + 2);
-                            graphics.lineTo(arrowX + 4, arrowY - 3);
-                            graphics.closePath();
-                            graphics.fillPath();
-                        } else {
-                            graphics.beginPath();
-                            graphics.moveTo(arrowX - 4, arrowY + 3);
-                            graphics.lineTo(arrowX, arrowY - 2);
-                            graphics.lineTo(arrowX + 4, arrowY + 3);
+                            if (dir.y > 0) {
+                                graphics.moveTo(arrowX - 4, arrowY - 3);
+                                graphics.lineTo(arrowX, arrowY + 2);
+                                graphics.lineTo(arrowX + 4, arrowY - 3);
+                            } else {
+                                graphics.moveTo(arrowX - 4, arrowY + 3);
+                                graphics.lineTo(arrowX, arrowY - 2);
+                                graphics.lineTo(arrowX + 4, arrowY + 3);
+                            }
                             graphics.closePath();
                             graphics.fillPath();
                         }
                     }
-                }
 
-                // Metallic side rails - extend to edges
-                graphics.fillStyle(isAlloy ? 0x9a8a7a : 0x777777);
-                if (dir.x !== 0) {
-                    graphics.fillRect(px, py, TILE_SIZE, 3);
-                    graphics.fillRect(px, py + TILE_SIZE - 3, TILE_SIZE, 3);
-                    // Rail highlights
-                    graphics.fillStyle(isAlloy ? 0xbaa99a : 0x999999);
-                    graphics.fillRect(px, py, TILE_SIZE, 1);
-                    graphics.fillRect(px, py + TILE_SIZE - 3, TILE_SIZE, 1);
-                } else {
-                    graphics.fillRect(px, py, 3, TILE_SIZE);
-                    graphics.fillRect(px + TILE_SIZE - 3, py, 3, TILE_SIZE);
-                    // Rail highlights
-                    graphics.fillStyle(isAlloy ? 0xbaa99a : 0x999999);
-                    graphics.fillRect(px, py, 1, TILE_SIZE);
-                    graphics.fillRect(px + TILE_SIZE - 3, py, 1, TILE_SIZE);
-                }
+                    // Metallic side rails
+                    graphics.fillStyle(railColor);
+                    if (dir.x !== 0) {
+                        graphics.fillRect(px, py, TILE_SIZE, 3);
+                        graphics.fillRect(px, py + TILE_SIZE - 3, TILE_SIZE, 3);
+                        graphics.fillStyle(highlightColor);
+                        graphics.fillRect(px, py, TILE_SIZE, 1);
+                        graphics.fillRect(px, py + TILE_SIZE - 3, TILE_SIZE, 1);
+                    } else {
+                        graphics.fillRect(px, py, 3, TILE_SIZE);
+                        graphics.fillRect(px + TILE_SIZE - 3, py, 3, TILE_SIZE);
+                        graphics.fillStyle(highlightColor);
+                        graphics.fillRect(px, py, 1, TILE_SIZE);
+                        graphics.fillRect(px + TILE_SIZE - 3, py, 1, TILE_SIZE);
+                    }
 
-                // Roller wheels at edges
-                graphics.fillStyle(isAlloy ? 0x6a5a4a : 0x555555);
-                if (dir.x !== 0) {
-                    graphics.fillCircle(px + 4, py + TILE_SIZE / 2, 2);
-                    graphics.fillCircle(px + TILE_SIZE - 4, py + TILE_SIZE / 2, 2);
-                } else {
-                    graphics.fillCircle(px + TILE_SIZE / 2, py + 4, 2);
-                    graphics.fillCircle(px + TILE_SIZE / 2, py + TILE_SIZE - 4, 2);
+                    // Roller wheels
+                    graphics.fillStyle(isAlloy ? 0x6a5a4a : 0x555555);
+                    if (dir.x !== 0) {
+                        graphics.fillCircle(px + 4, py + TILE_SIZE / 2, 2);
+                        graphics.fillCircle(px + TILE_SIZE - 4, py + TILE_SIZE / 2, 2);
+                    } else {
+                        graphics.fillCircle(px + TILE_SIZE / 2, py + 4, 2);
+                        graphics.fillCircle(px + TILE_SIZE / 2, py + TILE_SIZE - 4, 2);
+                    }
                 }
 
             } else if (b.type === 'payload-conveyor') {
@@ -4979,7 +5262,7 @@
             buildings.forEach(b => {
                 if (b.type === 'core') {
                     ctx.fillStyle = '#4CAF50';
-                    ctx.fillRect(b.x * TILE_SIZE * scaleX, b.y * TILE_SIZE * scaleY, TILE_SIZE * 2 * scaleX, TILE_SIZE * 2 * scaleY);
+                    ctx.fillRect(b.x * TILE_SIZE * scaleX, b.y * TILE_SIZE * scaleY, TILE_SIZE * 3 * scaleX, TILE_SIZE * 3 * scaleY);
                 } else {
                     ctx.fillStyle = b.type.includes('turret') || b.type === 'scatter' || b.type === 'laser' ? '#cc4444' :
                                    b.type.includes('wall') ? '#666666' :
