@@ -7,7 +7,9 @@
       "Bash(pm search:*)",
       "Bash(ls:*)",
       "Bash(pm reindex:*)",
-      "Bash(pm stop:*)"
+      "Bash(pm stop:*)",
+      "Bash(node --check:*)",
+      "Bash(powershell -Command:*)"
     ]
   }
 }

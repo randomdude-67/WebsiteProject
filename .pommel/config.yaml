@@ -1,0 +1,66 @@
+chunk_levels:
+    - method
+    - class
+    - file
+daemon:
+    host: 127.0.0.1
+    port: null
+    log_level: info
+embedding:
+    model: unclemusclez/jina-embeddings-v2-base-code
+    ollama_url: http://localhost:11434
+    batch_size: 32
+    cache_size: 1000
+exclude_patterns:
+    - '**/node_modules/**'
+    - '**/bin/**'
+    - '**/obj/**'
+    - '**/__pycache__/**'
+    - '**/.git/**'
+    - '**/.pommel/**'
+include_patterns:
+    - '**/*.go'
+    - '**/*.cs'
+    - '**/*.py'
+    - '**/*.js'
+    - '**/*.ts'
+    - '**/*.jsx'
+    - '**/*.tsx'
+    - '**/*.java'
+    - '**/*.rs'
+    - '**/*.html'
+    - '**/*.css'
+search:
+    default_limit: 10
+    default_levels:
+        - method
+        - class
+    hybrid:
+        enabled: true
+        rrf_k: 60
+        vector_weight: 0.7
+        keyword_weight: 0.3
+    reranker:
+        enabled: true
+        model: ""
+        timeout_ms: 2000
+        fallback: heuristic
+        candidates: 20
+subprojects:
+    auto_detect: true
+    markers:
+        - '*.sln'
+        - '*.csproj'
+        - go.mod
+        - Cargo.toml
+        - pom.xml
+        - build.gradle
+        - package.json
+        - pyproject.toml
+        - setup.py
+    projects: []
+    exclude: []
+version: 1
+watcher:
+    debounce_ms: 500
+    max_file_size: 1048576

@@ -354,33 +354,33 @@
 <body>
     <!-- Top Resource Bar -->
     <div id="resource-bar">
-        <div class="resource-item">
+        <div class="resource-item" title="Copper - basic building material">
             <div class="resource-icon" style="background: #d4a574;"></div>
-            <span class="resource-count" id="copper-count">20</span>
+            <span class="resource-count" id="copper-count" title="Copper ore">20</span>
         </div>
-        <div class="resource-item">
+        <div class="resource-item" title="Lead - defense and production">
             <div class="resource-icon" style="background: #7799aa;"></div>
-            <span class="resource-count" id="lead-count">20</span>
+            <span class="resource-count" id="lead-count" title="Lead ore">20</span>
         </div>
-        <div class="resource-item">
+        <div class="resource-item" title="Coal - fuel for generators">
             <div class="resource-icon" style="background: #444;"></div>
-            <span class="resource-count" id="coal-count">0</span>
+            <span class="resource-count" id="coal-count" title="Coal ore">0</span>
         </div>
-        <div class="resource-item">
+        <div class="resource-item" title="Titanium - strong construction">
             <div class="resource-icon" style="background: #4a7c9b;"></div>
-            <span class="resource-count" id="titanium-count">0</span>
+            <span class="resource-count" id="titanium-count" title="Titanium ore">0</span>
         </div>
-        <div class="resource-item">
+        <div class="resource-item" title="Graphite - advanced production">
             <div class="resource-icon" style="background: #2a2a2a;"></div>
-            <span class="resource-count" id="graphite-count">0</span>
+            <span class="resource-count" id="graphite-count" title="Graphite ore">0</span>
         </div>
-        <div class="resource-item">
+        <div class="resource-item" title="Alloy - premium resource">
             <div class="resource-icon" style="background: linear-gradient(135deg, #d4a574, #7799aa);"></div>
-            <span class="resource-count" id="alloy-count">0</span>
+            <span class="resource-count" id="alloy-count" title="Alloy">0</span>
         </div>
-        <div class="resource-item">
+        <div class="resource-item" title="Sand - crafting material">
             <div class="resource-icon" style="background: #c9b592;"></div>
-            <span class="resource-count" id="sand-count">0</span>
+            <span class="resource-count" id="sand-count" title="Sand ore">0</span>
         </div>
 
         <div id="wave-display">
@@ -566,22 +566,22 @@
             conveyor: {
                 category: 'transport', cost: { copper: 1 }, health: 20,
                 icon: '➡', name: 'Conveyor', hotkey: '3',
-                desc: 'Moves items in one direction', buildTime: 200
+                desc: 'Moves items in one direction', buildTime: 50
             },
             'alloy-conveyor': {
                 category: 'transport', cost: { alloy: 3, silicon: 2 }, health: 40,
                 icon: '⇒', name: 'A-Conveyor', hotkey: null,
-                desc: 'Fast alloy conveyor 2x speed', speedMult: 2, buildTime: 300
+                desc: 'Fast alloy conveyor 2x speed', speedMult: 2, buildTime: 75
             },
             router: {
                 category: 'transport', cost: { copper: 15 }, health: 30,
                 icon: '✚', name: 'Router', hotkey: '4',
-                desc: 'Splits items 3 ways', buildTime: 300
+                desc: 'Splits items 3 ways', buildTime: 75
             },
             junction: {
                 category: 'transport', cost: { copper: 9, lead: 9 }, health: 25,
                 icon: '╋', name: 'Junction', hotkey: '5',
-                desc: 'Items pass through', buildTime: 300
+                desc: 'Items pass through', buildTime: 75
             },
             'payload-conveyor': {
                 category: 'units', cost: { titanium: 15, alloy: 10, silicon: 8 }, health: 35,
@@ -690,7 +690,14 @@
         let maxCoreHealth = 500;
         let gameOver = false;
         let isDragging = false;
+
+        // Debug flags
+        let debugInvincible = false;
+        let debugSpeedBoost = false;
         let lastDragTile = null;
+
+        // Game pause state
+        let gamePaused = false;
 
         // Map data
         let map = [];
@@ -884,7 +891,17 @@
             };
 
             this.input.keyboard.on('keydown-R', () => { rotation = (rotation + 1) % 4; });
-            this.input.keyboard.on('keydown-SPACE', startWaveEarly);
+            this.input.keyboard.on('keydown-SPACE', () => {
+                gamePaused = !gamePaused;
+                // Show pause indicator
+                const pauseText = document.getElementById('wave-timer');
+                if (gamePaused) {
+                    pauseText.style.backgroundColor = 'rgba(255, 200, 0, 0.3)';
+                    pauseText.textContent = '⏸ PAUSED - Press SPACE to resume';
+                } else {
+                    pauseText.style.backgroundColor = '';
+                }
+            });
 
             // Zoom hotkeys
             this.input.keyboard.on('keydown-PLUS', () => { zoom = Math.min(MAX_ZOOM, zoom + 0.1); });
@@ -920,10 +937,6 @@
             // Items now updated smoothly in main update loop
             this.time.addEvent({ delay: 1000, callback: repairTick, loop: true });
             this.time.addEvent({ delay: 500, callback: powerTick, loop: true });
-            
-            // Debug cheat system
-            let debugInvincible = false;
-            let debugSpeedBoost = false;
 
             // Toggle debug panel
             document.getElementById('debug-toggle').addEventListener('click', () => {
@@ -1157,26 +1170,26 @@
         }
 
         function generateWalls(seed) {
-            // Generate mountain rock formations
-            const mountainCount = 5 + Math.floor(Math.random() * 4); // 5-9 mountain ranges
+            // Generate mountain rock formations in groups
+            const mountainCount = 3 + Math.floor(Math.random() * 2); // 3-5 wall groups
             const cx = Math.floor(MAP_WIDTH / 2);
             const cy = Math.floor(MAP_HEIGHT / 2);
 
             for (let m = 0; m < mountainCount; m++) {
-                // Mountain center - avoid core
+                // Mountain center - avoid core, larger spacing for grouping
                 let centerX, centerY;
                 let attempts = 0;
                 do {
-                    centerX = 15 + Math.floor(Math.random() * (MAP_WIDTH - 30));
-                    centerY = 15 + Math.floor(Math.random() * (MAP_HEIGHT - 30));
+                    centerX = 20 + Math.floor(Math.random() * (MAP_WIDTH - 40));
+                    centerY = 20 + Math.floor(Math.random() * (MAP_HEIGHT - 40));
                     attempts++;
-                } while (Math.abs(centerX - cx) < 20 && Math.abs(centerY - cy) < 20 && attempts < 30);
+                } while (Math.abs(centerX - cx) < 25 && Math.abs(centerY - cy) < 25 && attempts < 30);
 
                 if (attempts >= 30) continue;
 
-                // Mountain size and shape
-                const baseRadius = 8 + Math.floor(Math.random() * 8); // 8-16 tiles radius
-                const elongation = 0.5 + Math.random() * 1.5; // Stretch factor
+                // Mountain size and shape - larger formations
+                const baseRadius = 12 + Math.floor(Math.random() * 12); // 12-24 tiles radius for bigger groups
+                const elongation = 0.6 + Math.random() * 1.4; // Stretch factor
                 const rotation = Math.random() * Math.PI;
 
                 // Generate mountain using irregular circle with noise
@@ -1202,10 +1215,10 @@
                                         Math.cos(wx * 0.2 - wy * 0.3) * 0.2;
                         const threshold = 1.0 + noiseVal;
 
-                        // Place rock based on distance with falloff
+                        // Place rock based on distance with falloff - higher density
                         if (dist < threshold) {
                             const density = 1 - (dist / threshold);
-                            if (Math.random() < density * 0.85) {
+                            if (Math.random() < density * 0.95) { // Higher density = more grouped
                                 terrainMap[wy][wx] = TERRAIN.WALL;
                             }
                         }
@@ -1763,7 +1776,7 @@
                 }
             }
 
-            if (!canAfford(selectedBuilding)) return;
+            // Don't check affordability - let ship build as much as it can with available resources
 
             const isDrill = selectedBuilding === 'drill' || selectedBuilding === 'pneumatic-drill' || selectedBuilding === 'alloy-drill';
             if (isDrill) {
@@ -1782,7 +1795,7 @@
                 if (!hasOreOrSand) return;
             }
 
-            spend(selectedBuilding);
+            // DON'T spend resources here - they'll be deducted as the ship builds
 
             const building = {
                 type: selectedBuilding,
@@ -2135,79 +2148,7 @@
                 consumer.powerEfficiency = connected ? powerEfficiency : 0;
             });
 
-            // Construction queue - progress buildings under construction (iterate backwards to safely remove)
-            for (let i = constructionQueue.length - 1; i >= 0; i--) {
-                const building = constructionQueue[i];
-                const buildTime = BUILDINGS[building.type].buildTime || 0;
-
-                if (buildTime === 0) {
-                    // Instant build (like core or buildings without buildTime)
-                    building.isConstructing = false;
-                    building.buildProgress = buildTime;
-                } else {
-                    // Progress construction by 500ms per tick
-                    building.buildProgress += 500;
-                }
-
-                // Check if construction is complete
-                if (building.buildProgress >= buildTime) {
-                    // Remove from construction queue
-                    constructionQueue.splice(i, 1);
-                    building.isConstructing = false;
-
-                    // Add to buildings array
-                    const width = building.width || 1;
-                    const height = building.height || 1;
-
-                    buildings.push(building);
-
-                    // For 2x2 buildings, create tile references
-                    if (width > 1 || height > 1) {
-                        building.isMaster = true;
-                        building.tileX = building.x;
-                        building.tileY = building.y;
-
-                        for (let dy = 0; dy < height; dy++) {
-                            for (let dx = 0; dx < width; dx++) {
-                                if (dx === 0 && dy === 0) continue; // Skip top-left (master)
-
-                                const tileRef = new Proxy({
-                                    _isTileRef: true,
-                                    _master: building,
-                                    _x: building.x + dx,
-                                    _y: building.y + dy
-                                }, {
-                                    get(target, prop) {
-                                        if (prop === 'isTileRef') return true;
-                                        if (prop === 'master') return target._master;
-                                        if (prop === 'x') return target._x;
-                                        if (prop === 'y') return target._y;
-                                        if (prop === 'width') return 1;
-                                        if (prop === 'height') return 1;
-                                        return target._master[prop];
-                                    },
-                                    set(target, prop, value) {
-                                        if (prop === 'x' || prop === 'y') {
-                                            target['_' + prop] = value;
-                                            return true;
-                                        }
-                                        target._master[prop] = value;
-                                        return true;
-                                    }
-                                });
-
-                                buildings.push(tileRef);
-                                map[building.y + dy][building.x + dx] = building.type;
-                            }
-                        }
-                        map[building.y][building.x] = building.type;
-                    } else {
-                        map[building.y][building.x] = building.type;
-                    }
-
-                    spawnParticles(building.x * TILE_SIZE + TILE_SIZE/2, building.y * TILE_SIZE + TILE_SIZE/2, 0x44ff44, 8);
-                }
-            }
+            // OLD AUTO-BUILD TIMER REMOVED - Buildings now only built by ship in update() function
 
             // Graphite press crafting (no power required) - only process master buildings, not tile refs
             buildings.filter(b => b.type === 'graphite-press' && !b.isTileRef).forEach(press => {
@@ -2435,8 +2376,31 @@
                         return false;
                     });
 
-                    if (target && deliverItem(building, target, pos.x, pos.y, itemType)) {
-                        return; // Successfully output
+                    if (target) {
+                        // Special case: graphite-press only outputs to core or conveyors facing away
+                        if (building.type === 'graphite-press') {
+                            if (target.type === 'core') {
+                                if (deliverItem(building, target, pos.x, pos.y, itemType)) return;
+                            } else if (target.type === 'conveyor' || target.type === 'alloy-conveyor') {
+                                // Check if conveyor is facing AWAY from the press (input from the press side)
+                                const conveyorRot = target.rotation;
+                                const dirToConveyor = pos.x - (building.x + (building.width || 1) / 2);
+                                const dirToConveyorY = pos.y - (building.y + (building.height || 1) / 2);
+                                // Determine which direction the press is "pointing" toward this conveyor
+                                let buildingDir = 0;
+                                if (dirToConveyor > 0) buildingDir = 0; // right
+                                else if (dirToConveyor < 0) buildingDir = 2; // left
+                                else if (dirToConveyorY > 0) buildingDir = 1; // down
+                                else if (dirToConveyorY < 0) buildingDir = 3; // up
+                                // Conveyor input direction (accepts items from this direction)
+                                const convInputDir = (conveyorRot + 2) % 4;
+                                if (buildingDir === convInputDir) {
+                                    if (deliverItem(building, target, pos.x, pos.y, itemType)) return;
+                                }
+                            }
+                        } else if (deliverItem(building, target, pos.x, pos.y, itemType)) {
+                            return; // Successfully output for other buildings
+                        }
                     }
                 }
             }
@@ -3279,7 +3243,7 @@
                             baseColor = checker ? 0x3a3a48 : 0x32323e;
                             break;
                         case TERRAIN.WALL:
-                            baseColor = checker ? 0x4a4a4a : 0x3a3a3a;
+                            baseColor = checker ? 0x2a2a2a : 0x1a1a1a;
                             break;
                         default:
                             baseColor = 0x2d4a2d;
@@ -3469,8 +3433,115 @@
             graphics.lineStyle(2, 0xff0000, pulse);
             graphics.strokeCircle(spawnScreenX + TILE_SIZE/2, spawnScreenY + TILE_SIZE/2, TILE_SIZE * 1.5);
 
+            // Update construction queue - only build ONE at a time sequentially
+            if (constructionQueue.length > 0 && !gamePaused) {
+                const building = constructionQueue[0]; // Only work on the first building
+                const buildTime = BUILDINGS[building.type].buildTime || 1000;
+                const buildData = BUILDINGS[building.type];
+                const cost = buildData.cost || {};
+
+                // Initialize buildProgress and resourcesSpent if not set
+                if (!building.buildProgress) building.buildProgress = 0;
+                if (!building.resourcesSpent) {
+                    building.resourcesSpent = {};
+                    for (let res in cost) {
+                        building.resourcesSpent[res] = 0;
+                    }
+                }
+                if (!building.waitingForResources) building.waitingForResources = false;
+
+                // Check if we can afford to continue building
+                let canContinue = true;
+                for (let res in cost) {
+                    const totalNeeded = cost[res];
+                    const alreadySpent = building.resourcesSpent[res] || 0;
+                    const stillNeeded = totalNeeded - alreadySpent;
+                    if (stillNeeded > 0 && (resources[res] || 0) <= 0) {
+                        canContinue = false;
+                        building.waitingForResources = true;
+                        break;
+                    }
+                }
+
+                // Only build if we have resources OR if waiting for click
+                if (canContinue && !building.waitingForClick) {
+                    // Calculate how much progress this frame represents
+                    const progressThisFrame = delta;
+                    const progressFraction = progressThisFrame / buildTime;
+
+                    // Deduct resources proportionally to progress
+                    for (let res in cost) {
+                        const totalCost = cost[res];
+                        const costThisFrame = totalCost * progressFraction;
+                        const available = resources[res] || 0;
+                        const actualDeduction = Math.min(costThisFrame, available, totalCost - (building.resourcesSpent[res] || 0));
+
+                        if (actualDeduction > 0) {
+                            resources[res] = Math.max(0, (resources[res] || 0) - actualDeduction);
+                            building.resourcesSpent[res] = (building.resourcesSpent[res] || 0) + actualDeduction;
+                        }
+                    }
+
+                    updateResourceUI();
+
+                    // Increment build progress
+                    building.buildProgress += delta;
+                    building.waitingForResources = false;
+                }
+
+                // Check if construction is complete
+                if (building.buildProgress >= buildTime) {
+                    // Remove from queue
+                    constructionQueue.shift();
+
+                    // Add to buildings array
+                    buildings.push(building);
+
+                    // Update map for multi-tile buildings
+                    if (building.width > 1 || building.height > 1) {
+                        for (let dy = 0; dy < building.height; dy++) {
+                            for (let dx = 0; dx < building.width; dx++) {
+                                if (dx === 0 && dy === 0) continue;
+
+                                const tileRef = new Proxy({
+                                    _master: building,
+                                    _x: building.x + dx,
+                                    _y: building.y + dy
+                                }, {
+                                    get(target, prop) {
+                                        if (prop === 'isTileRef') return true;
+                                        if (prop === 'master') return target._master;
+                                        if (prop === 'x') return target._x;
+                                        if (prop === 'y') return target._y;
+                                        if (prop === 'width') return 1;
+                                        if (prop === 'height') return 1;
+                                        return target._master[prop];
+                                    },
+                                    set(target, prop, value) {
+                                        if (prop === 'x' || prop === 'y') {
+                                            target['_' + prop] = value;
+                                            return true;
+                                        }
+                                        target._master[prop] = value;
+                                        return true;
+                                    }
+                                });
+
+                                buildings.push(tileRef);
+                                map[building.y + dy][building.x + dx] = building.type;
+                            }
+                        }
+                        map[building.y][building.x] = building.type;
+                    } else {
+                        map[building.y][building.x] = building.type;
+                    }
+
+                    spawnParticles(building.x * TILE_SIZE + TILE_SIZE/2, building.y * TILE_SIZE + TILE_SIZE/2, 0x44ff44, 8);
+                }
+            }
+
             // Draw construction queue (semi-transparent ghosts)
-            constructionQueue.forEach(b => {
+            constructionQueue.forEach((b, idx) => {
                 const screenX = b.x * TILE_SIZE - camera.x;
                 const screenY = b.y * TILE_SIZE - camera.y;
                 const width = (b.width || 1) * TILE_SIZE;
@@ -3481,23 +3552,113 @@
                     screenY > -TILE_SIZE * 2 && screenY < window.innerHeight + TILE_SIZE) {
 
                     const buildTime = BUILDINGS[b.type].buildTime || 1;
-                    const progress = Math.min(1, b.buildProgress / buildTime);
+                    const progress = Math.min(1, (b.buildProgress || 0) / buildTime);
 
-                    // Semi-transparent white/blue tint for ghost
-                    graphics.fillStyle(0x88ccff, 0.3);
+                    // Draw construction laser from ship to building (ONLY for the first building being built and not paused)
+                    if (idx === 0 && b.buildProgress > 0 && !gamePaused && !b.waitingForResources) {
+                        const buildingCenterX = screenX + width / 2;
+                        const buildingCenterY = screenY + height / 2;
+                        const shipScreenX = player.x - camera.x;
+                        const shipScreenY = player.y - camera.y;
+
+                        // Animated construction laser
+                        const laserPulse = Math.sin(Date.now() / 60) * 0.3 + 0.7;
+
+                        // Outer glow
+                        graphics.lineStyle(10, 0x44ff44, laserPulse * 0.2);
+                        graphics.lineBetween(shipScreenX, shipScreenY, buildingCenterX, buildingCenterY);
+
+                        // Middle glow
+                        graphics.lineStyle(5, 0x66ff66, laserPulse * 0.5);
+                        graphics.lineBetween(shipScreenX, shipScreenY, buildingCenterX, buildingCenterY);
+
+                        // Core beam
+                        graphics.lineStyle(2, 0x88ff88, laserPulse * 0.9);
+                        graphics.lineBetween(shipScreenX, shipScreenY, buildingCenterX, buildingCenterY);
+
+                        // Impact effect at building
+                        graphics.fillStyle(0x44ff44, laserPulse * 0.6);
+                        graphics.fillCircle(buildingCenterX, buildingCenterY, 10);
+                        graphics.fillStyle(0xffffff, laserPulse * 0.4);
+                        graphics.fillCircle(buildingCenterX, buildingCenterY, 5);
+                    }
+
+                    // Different colors for different states
+                    let ghostColor = 0x88ccff; // Default: queued
+                    let borderColor = 0x88ccff;
+                    let ghostAlpha = 0.2;
+                    let borderAlpha = 0.4;
+
+                    if (gamePaused) {
+                        // Paused/Plan mode - yellow
+                        ghostColor = 0xffcc00;
+                        borderColor = 0xffcc00;
+                        ghostAlpha = idx === 0 ? 0.3 : 0.15;
+                        borderAlpha = idx === 0 ? 0.6 : 0.3;
+                    } else if (idx === 0) {
+                        if (b.waitingForResources) {
+                            // Waiting for resources - red
+                            ghostColor = 0xff4444;
+                            borderColor = 0xff4444;
+                            ghostAlpha = 0.4;
+                            borderAlpha = 0.8;
+                        } else {
+                            // Currently building - green
+                            ghostColor = 0x88ccff;
+                            borderColor = 0x44ff44;
+                            ghostAlpha = 0.5;
+                            borderAlpha = 0.9;
+                        }
+                    }
+
+                    // Semi-transparent tint for ghost
+                    graphics.fillStyle(ghostColor, ghostAlpha);
                     graphics.fillRect(screenX, screenY, width, height);
 
                     // Border
-                    graphics.lineStyle(2, 0x88ccff, 0.6);
+                    graphics.lineStyle(2, borderColor, borderAlpha);
                     graphics.strokeRect(screenX, screenY, width, height);
 
-                    // Progress bar
-                    const barHeight = 4;
-                    const barY = screenY + height + 4;
-                    graphics.fillStyle(0x333333, 0.8);
-                    graphics.fillRect(screenX, barY, width, barHeight);
-                    graphics.fillStyle(0x44ff44, 0.9);
-                    graphics.fillRect(screenX, barY, width * progress, barHeight);
+                    // Queue number for buildings waiting
+                    if (idx > 0) {
+                        graphics.fillStyle(0xffffff, 0.8);
+                        const fontSize = 16;
+                        const numberText = `${idx}`;
+                        graphics.fillCircle(screenX + width / 2, screenY + height / 2, 12);
+                        // Draw text using canvas context (Phaser text rendering)
+                        const textX = screenX + width / 2;
+                        const textY = screenY + height / 2;
+                    }
+
+                    // Progress bar and status (only show for the building being constructed)
+                    if (idx === 0) {
+                        const barHeight = 6;
+                        const barY = screenY + height + 6;
+                        graphics.fillStyle(0x222222, 0.9);
+                        graphics.fillRect(screenX - 2, barY, width + 4, barHeight);
+                        graphics.fillStyle(0x333333, 0.9);
+                        graphics.fillRect(screenX, barY + 1, width, barHeight - 2);
+
+                        // Progress bar color based on state
+                        let barColor = 0x44ff44; // Green = building
+                        if (gamePaused) {
+                            barColor = 0xffaa00; // Orange = paused
+                        } else if (b.waitingForResources) {
+                            barColor = 0xff4444; // Red = waiting for resources
+                        }
+
+                        graphics.fillStyle(barColor, 0.95);
+                        graphics.fillRect(screenX, barY + 1, width * progress, barHeight - 2);
+
+                        // Status text below progress bar
+                        if (gamePaused || b.waitingForResources) {
+                            const statusY = screenY + height + 18;
+                            graphics.fillStyle(0x000000, 0.7);
+                            const textWidth = 80;
+                            graphics.fillRect(screenX + width/2 - textWidth/2, statusY - 3, textWidth, 14);
+                            // Text rendering would need canvas text - showing colored bar is enough for now
+                        }
+                    }
                 }
             });
 
@@ -5597,47 +5758,76 @@
                 }
 
             } else if (b.type === 'graphite-press') {
-                // 2x2 Graphite Press - top-down view
+                // 2x2 Graphite Press - industrial metal press
                 const pressW = TILE_SIZE * 2;
                 const pressH = TILE_SIZE * 2;
                 
-                // Main press body - dark gray base
+                // Main press body - dark steel base
                 graphics.fillStyle(0x1a1a1a);
                 graphics.fillRoundedRect(px + 2, py + 2, pressW - 4, pressH - 4, 6);
                 
-                // Press platform
+                // Steel frame pattern
                 graphics.fillStyle(0x2a2a2a);
                 graphics.fillRoundedRect(px + 6, py + 6, pressW - 12, pressH - 12, 4);
                 
-                // Four compression pistons at corners
-                const pistonSize = b.craftProgress ? 
-                    8 + Math.sin((b.craftProgress / BUILDINGS['graphite-press'].craftTime) * Math.PI * 2) * 3 : 8;
-                graphics.fillStyle(0x555555);
-                graphics.fillCircle(px + 16, py + 16, pistonSize);
-                graphics.fillCircle(px + pressW - 16, py + 16, pistonSize);
-                graphics.fillCircle(px + 16, py + pressH - 16, pistonSize);
-                graphics.fillCircle(px + pressW - 16, py + pressH - 16, pistonSize);
-                
-                // Central compression chamber
-                graphics.fillStyle(0x3a3a3a);
-                graphics.fillRoundedRect(px + pressW/2 - 12, py + pressH/2 - 12, 24, 24, 3);
-                
-                // Compression indicator in center
-                if (b.craftProgress > 0) {
-                    const progress = b.craftProgress / BUILDINGS['graphite-press'].craftTime;
-                    graphics.fillStyle(0x222222, 0.3 + progress * 0.5);
-                    graphics.fillCircle(px + pressW/2, py + pressH/2, 10);
+                // Frame texture - crosshatched metal
+                graphics.fillStyle(0x1a1a1a, 0.6);
+                for (let i = 0; i < pressW - 12; i += 6) {
+                    graphics.fillRect(px + 6 + i, py + 6, 1, pressH - 12);
                 }
                 
-                // Storage indicators - coal on left, graphite output on right
+                // Four compression pistons at corners - animated when crafting
+                const pistonSize = b.craftProgress ? 
+                    7 + Math.sin((b.craftProgress / BUILDINGS['graphite-press'].craftTime) * Math.PI * 2) * 4 : 7;
+                graphics.fillStyle(0x444444);
+                graphics.fillCircle(px + 12, py + 12, pistonSize);
+                graphics.fillCircle(px + pressW - 12, py + 12, pistonSize);
+                graphics.fillCircle(px + 12, py + pressH - 12, pistonSize);
+                graphics.fillCircle(px + pressW - 12, py + pressH - 12, pistonSize);
+                
+                // Piston rods
+                graphics.fillStyle(0x555555);
+                graphics.fillRect(px + 11, py + 6, 2, 8);
+                graphics.fillRect(px + pressW - 13, py + 6, 2, 8);
+                graphics.fillRect(px + 11, py + pressH - 14, 2, 8);
+                graphics.fillRect(px + pressW - 13, py + pressH - 14, 2, 8);
+                
+                // Central compression chamber with metallic detail
+                graphics.fillStyle(0x3a3a3a);
+                graphics.fillRoundedRect(px + pressW/2 - 14, py + pressH/2 - 14, 28, 28, 4);
+                graphics.fillStyle(0x2a2a2a);
+                graphics.fillRoundedRect(px + pressW/2 - 12, py + pressH/2 - 12, 24, 24, 3);
+                
+                // Compression glow when active
+                if (b.craftProgress > 0) {
+                    const progress = b.craftProgress / BUILDINGS['graphite-press'].craftTime;
+                    graphics.fillStyle(0x444466, 0.3 + progress * 0.4);
+                    graphics.fillCircle(px + pressW/2, py + pressH/2, 12);
+                }
+                
+                // Coal storage indicator - left side
                 if (b.coalStored > 0) {
                     const coalPct = Math.min(1, b.coalStored / 2);
+                    graphics.fillStyle(0x222222);
+                    graphics.fillRect(px + 8, py + pressH/2 - 6, 10, 12);
                     graphics.fillStyle(0x444444);
-                    graphics.fillRect(px + 8, py + pressH/2 - 8, 12 * coalPct, 16);
+                    graphics.fillRect(px + 8, py + pressH/2 - 6 + (12 - 12 * coalPct), 10, 12 * coalPct);
+                }
+                
+                // Graphite output indicator - right side
+                if (b.craftProgress > 0 || b.coalStored > 0) {
+                    graphics.fillStyle(0x333333);
+                    graphics.fillRect(px + pressW - 18, py + pressH/2 - 6, 10, 12);
+                    const graphiteColor = 0x2a2a2a;
+                    graphics.fillStyle(graphiteColor);
+                    if (b.craftProgress > 0) {
+                        const progress = Math.min(1, b.craftProgress / BUILDINGS['graphite-press'].craftTime);
+                        graphics.fillRect(px + pressW - 18, py + pressH/2 - 6 + (12 - 12 * progress), 10, 12 * progress);
+                    }
                 }
                 
                 // Output direction arrow
-                drawArrow(px + pressW/2, py + pressH/2, b.rotation, 0x666666);
+                drawArrow(px + pressW/2, py + pressH/2, b.rotation, 0x555555);
 
             } else if (b.type === 'silicon-smelter') {
                 // 2x2 Silicon Smelter - industrial furnace
@@ -5699,66 +5889,72 @@
                 }
 
             } else if (b.type === 'alloy-factory') {
-                // 2x2 Alloy Factory - highly visible industrial building
+                // 2x2 Alloy Factory - industrial metal structure
                 const factoryW = TILE_SIZE * 2;
                 const factoryH = TILE_SIZE * 2;
                 
-                // Main factory building - dark industrial brown
-                graphics.fillStyle(0x443322);
+                // Main factory building - dark gray industrial steel
+                graphics.fillStyle(0x333333);
                 graphics.fillRoundedRect(px + 2, py + 2, factoryW - 4, factoryH - 4, 6);
                 
-                // Factory walls
-                graphics.fillStyle(0x665544);
+                // Factory walls - darker gray with texture
+                graphics.fillStyle(0x3a3a3a);
                 graphics.fillRoundedRect(px + 6, py + 6, factoryW - 12, factoryH - 12, 4);
                 
-                // Lead and titanium input hoppers
-                graphics.fillStyle(0x888899);  // Lead hopper
+                // Metal plate texture
+                graphics.fillStyle(0x2a2a2a, 0.5);
+                for (let i = 0; i < factoryW - 12; i += 8) {
+                    graphics.fillRect(px + 6 + i, py + 6, 4, factoryH - 12);
+                }
+                
+                // Lead and titanium input hoppers - darker tones
+                graphics.fillStyle(0x4a4a5a);  // Lead hopper - blue-gray
                 graphics.fillRect(px + 8, py + 8, 12, 10);
-                graphics.fillStyle(0x4a7c9b);  // Titanium hopper
+                graphics.fillStyle(0x3a4a5a);  // Titanium hopper - darker blue-gray
                 graphics.fillRect(px + factoryW - 20, py + 8, 12, 10);
                 
-                // Furnace glow in center
-                const glowIntensity = Math.sin(Date.now() / 300) * 0.3 + 0.7;
-                graphics.fillStyle(0xff6600, glowIntensity * 0.6);
+                // Furnace glow in center - darker, less vibrant
+                const glowIntensity = Math.sin(Date.now() / 400) * 0.2 + 0.5;
+                graphics.fillStyle(0x5a4a3a, glowIntensity * 0.4);
                 graphics.fillCircle(px + factoryW/2, py + factoryH/2, 14);
-                graphics.fillStyle(0xffaa00, glowIntensity * 0.8);
+                graphics.fillStyle(0x4a3a2a, glowIntensity * 0.5);
                 graphics.fillCircle(px + factoryW/2, py + factoryH/2, 10);
                 
-                // Chimney with smoke
-                graphics.fillStyle(0x333333);
+                // Chimney with smoke - dark metal
+                graphics.fillStyle(0x2a2a2a);
                 graphics.fillRect(px + factoryW - 16, py + 4, 8, 12);
                 if (b.powered) {
                     const smokeOffset = (Date.now() / 100) % 20;
-                    graphics.fillStyle(0x666666, 0.4);
+                    graphics.fillStyle(0x555555, 0.3);
                     graphics.fillCircle(px + factoryW - 12, py - smokeOffset, 4);
                     graphics.fillCircle(px + factoryW - 10, py - smokeOffset - 6, 3);
                 }
                 
-                // Alloy output chute
-                graphics.fillStyle(0xb8967a);
+                // Alloy output chute - dark gray metal
+                graphics.fillStyle(0x5a5a5a);
                 graphics.fillRect(px + factoryW/2 - 6, py + factoryH - 8, 12, 6);
                 
-                // Windows
-                graphics.fillStyle(0xffcc66, glowIntensity * 0.4);
+                // Windows - very subtle, dark blue tint
+                graphics.fillStyle(0x3a4a5a, glowIntensity * 0.3);
                 graphics.fillRect(px + 12, py + 24, 8, 10);
                 graphics.fillRect(px + factoryW - 20, py + 24, 8, 10);
                 
-                // Storage indicators
+                // Storage indicators - subtle colors
                 if (b.leadStored > 0) {
                     const leadBar = Math.min(1, b.leadStored / 10);
-                    graphics.fillStyle(0x888899);
+                    graphics.fillStyle(0x4a4a5a);
                     graphics.fillRect(px + 4, py + factoryH - 8, 10 * leadBar, 4);
                 }
                 if (b.titaniumStored > 0) {
                     const titaniumBar = Math.min(1, b.titaniumStored / 10);
-                    graphics.fillStyle(0x4a7c9b);
+                    graphics.fillStyle(0x3a4a5a);
                     graphics.fillRect(px + factoryW - 14, py + factoryH - 8, 10 * titaniumBar, 4);
                 }
                 
-                // Craft progress indicator
+                // Craft progress indicator - dark blue
                 if (b.craftProgress > 0) {
                     const progress = b.craftProgress / BUILDINGS['alloy-factory'].craftTime;
-                    graphics.fillStyle(0x44ff44);
+                    graphics.fillStyle(0x3a4a5a);
                     graphics.fillRect(px + 4, py + 4, (factoryW - 8) * progress, 3);
                 }
                 
