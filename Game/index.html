@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mindustry Clone</title>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <script src="game-config.js"></script>
+    <script src="game-terrain.js"></script>
     <style>
         * {
             margin: 0;
@@ -389,7 +391,28 @@
                 <div id="player-health-fill" style="width: 100%"></div>
                 <span id="player-health-text">Ship: 100%</span>
             </div>
-            <button id="debug-btn" style="margin-left: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">∞ Resources</button>
+            <button id="debug-toggle" style="margin-left: 10px; padding: 5px 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px;">🐛 Debug</button>
+        </div>
+    </div>
+
+    <!-- Debug Cheat Panel -->
+    <div id="debug-panel" style="display: none; position: fixed; top: 70px; right: 10px; background: rgba(22, 33, 62, 0.98); padding: 15px; border-radius: 8px; border: 2px solid #4CAF50; z-index: 200; color: white; font-size: 12px; min-width: 250px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <b style="color: #4CAF50; font-size: 14px;">🐛 Debug Cheats</b>
+            <button id="debug-close" style="background: #ff6b6b; color: white; border: none; border-radius: 3px; padding: 2px 8px; cursor: pointer; font-size: 11px;">×</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="debug-cheat" data-cheat="resources" style="background: #5a6a7a; color: white; border: none; border-radius: 4px; padding: 8px; cursor: pointer; text-align: left;">💰 Infinite Resources</button>
+            <button class="debug-cheat" data-cheat="invincible" style="background: #5a6a7a; color: white; border: none; border-radius: 4px; padding: 8px; cursor: pointer; text-align: left;">🛡️ Toggle Invincibility</button>
+            <button class="debug-cheat" data-cheat="killall" style="background: #5a6a7a; color: white; border: none; border-radius: 4px; padding: 8px; cursor: pointer; text-align: left;">💥 Kill All Enemies</button>
+            <button class="debug-cheat" data-cheat="spawn10" style="background: #5a6a7a; color: white; border: none; border-radius: 4px; padding: 8px; cursor: pointer; text-align: left;">👾 Spawn 10 Enemies</button>
+            <button class="debug-cheat" data-cheat="heal" style="background: #5a6a7a; color: white; border: none; border-radius: 4px; padding: 8px; cursor: pointer; text-align: left;">❤️ Heal Player & Buildings</button>
+            <button class="debug-cheat" data-cheat="speed" style="background: #5a6a7a; color: white; border: none; border-radius: 4px; padding: 8px; cursor: pointer; text-align: left;">⚡ Toggle 2x Speed</button>
+            <button class="debug-cheat" data-cheat="clearwave" style="background: #5a6a7a; color: white; border: none; border-radius: 4px; padding: 8px; cursor: pointer; text-align: left;">⏭️ Skip to Next Wave</button>
+        </div>
+        <div style="margin-top: 10px; padding-top: 10px; border-top: 1px solid #4CAF50;">
+            <div style="font-size: 10px; color: #888;">Status:</div>
+            <div id="debug-status" style="font-size: 10px; color: #4CAF50; margin-top: 4px;">Ready</div>
         </div>
     </div>
 
@@ -453,67 +476,7 @@
         // - Consolidated building/enemy/item updates
         // ============================================
 
-        // ============================================
-        // GAME CONFIGURATION - Centralized Settings
-        // ============================================
-        const CONFIG = {
-            // Map settings
-            TILE_SIZE: 32,
-            MAP_WIDTH: 200,
-            MAP_HEIGHT: 150,
-            
-            // Player settings
-            PLAYER: {
-                SPEED: 5,
-                HEALTH: 100,
-                FIRE_COOLDOWN_MAX: 350,
-                BULLET_SPEED: 10,
-                BULLET_DAMAGE: 8,
-                RESPAWN_TIME: 3000,
-                INVULNERABLE_TIME: 2000
-            },
-            
-            // Item/Resource settings
-            ITEM_SPEED: 1.5,
-            MAX_ITEMS: 800,
-            MAX_PARTICLES: 300,
-            
-            // Collision/Detection
-            GRID_CELL_SIZE: 32 * 4,  // 4 tiles per cell
-            MAX_MINERS_PER_NODE: 3,
-            
-            // Mining/Production
-            DRILL_SPEED_BONUS_PER_ORE: 0.25,  // Each ore tile adds 25% speed
-            MINING_DAMAGE_PER_FRAME: 0.1,
-            MINER_MINING_COOLDOWN: 800,
-            MINER_BASE_SPEED: 2.5,
-            MINER_RETURN_SPEED: 3.5,
-            MINER_INTERACTION_DISTANCE: 1.5,
-            MINER_MINING_DISTANCE: 1.5,
-            MINER_COLLISION_RADIUS: 14,
-            MINER_AVOIDANCE_RADIUS: 14 * 4,
-            MINER_HEALTH: 50,
-            MINER_MAX_INVENTORY: 30,
-            
-            // Wave/Spawning
-            FIRST_WAVE_TIMER: 240,
-            WAVE_INTERVAL: 120,
-            ENEMY_BASE_SEARCH_RADIUS: 5,
-            
-            // Zoom settings
-            MIN_ZOOM: 0.5,
-            MAX_ZOOM: 2.0,
-            
-            // Performance limits
-            MAX_BULLETS: 80,
-            MAX_ENEMY_BULLETS: 100,
-            MAX_MINERS: 50
-        };
-
-        // Game Constants (using CONFIG)
-        const TILE_SIZE = CONFIG.TILE_SIZE;
-        const MAP_WIDTH = CONFIG.MAP_WIDTH;
-        const MAP_HEIGHT = CONFIG.MAP_HEIGHT;
+        // CONFIG, TERRAIN, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT now loaded from game-config.js
 
         // Player ship
         let player = {
@@ -554,14 +517,7 @@
             silicon: 0
         };
 
-        // Terrain types
-        const TERRAIN = {
-            GRASS: 0,
-            SAND: 1,
-            WATER: 2,
-            STONE: 3,
-            DARK_STONE: 4
-        };
+        // Terrain types now loaded from game-config.js
 
         // Building definitions with categories
         const BUILDINGS = {
@@ -894,23 +850,25 @@
             // Disable context menu
             this.game.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
-            // Add mouse wheel rotation and zoom
+            // Add mouse wheel zoom (only when NOT placing buildings)
             this.game.canvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
-                if (e.ctrlKey || e.metaKey) {
-                    // Zoom with Ctrl+scroll
-                    const zoomSpeed = 0.1;
-                    if (e.deltaY < 0) {
-                        zoom = Math.min(MAX_ZOOM, zoom + zoomSpeed);
-                    } else if (e.deltaY > 0) {
-                        zoom = Math.max(MIN_ZOOM, zoom - zoomSpeed);
-                    }
-                } else {
+
+                // If placing a building, use scroll for rotation instead
+                if (selectedBuilding && selectedBuilding !== 'delete') {
                     // Rotate building with scroll
                     if (e.deltaY < 0) {
                         rotation = (rotation + 1) % 4; // Scroll up = rotate clockwise
                     } else if (e.deltaY > 0) {
                         rotation = (rotation + 3) % 4; // Scroll down = rotate counter-clockwise
+                    }
+                } else {
+                    // Zoom with mouse wheel when not placing buildings
+                    const zoomSpeed = CONFIG.ZOOM_SPEED;
+                    if (e.deltaY < 0) {
+                        zoom = Math.min(MAX_ZOOM, zoom + zoomSpeed);
+                    } else if (e.deltaY > 0) {
+                        zoom = Math.max(MIN_ZOOM, zoom - zoomSpeed);
                     }
                 }
             });
@@ -963,17 +921,111 @@
             this.time.addEvent({ delay: 1000, callback: repairTick, loop: true });
             this.time.addEvent({ delay: 500, callback: powerTick, loop: true });
             
-            // Debug button handler
-            document.getElementById('debug-btn').addEventListener('click', () => {
-                // Give infinite resources (large amount)
-                resources.copper = 999999;
-                resources.lead = 999999;
-                resources.coal = 999999;
-                resources.titanium = 999999;
-                resources.graphite = 999999;
-                resources.alloy = 999999;
-                resources.sand = 999999;
-                updateResourceUI();
+            // Debug cheat system
+            let debugInvincible = false;
+            let debugSpeedBoost = false;
+
+            // Toggle debug panel
+            document.getElementById('debug-toggle').addEventListener('click', () => {
+                const panel = document.getElementById('debug-panel');
+                panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+            });
+
+            document.getElementById('debug-close').addEventListener('click', () => {
+                document.getElementById('debug-panel').style.display = 'none';
+            });
+
+            // Debug cheat handlers
+            document.querySelectorAll('.debug-cheat').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const cheat = btn.dataset.cheat;
+                    const status = document.getElementById('debug-status');
+
+                    switch(cheat) {
+                        case 'resources':
+                            resources.copper = 999999;
+                            resources.lead = 999999;
+                            resources.coal = 999999;
+                            resources.titanium = 999999;
+                            resources.graphite = 999999;
+                            resources.alloy = 999999;
+                            resources.sand = 999999;
+                            resources.silicon = 999999;
+                            updateResourceUI();
+                            status.textContent = '✓ Resources maxed!';
+                            status.style.color = '#4CAF50';
+                            break;
+
+                        case 'invincible':
+                            debugInvincible = !debugInvincible;
+                            player.invulnerable = debugInvincible ? 999999 : 0;
+                            status.textContent = debugInvincible ? '✓ Invincibility ON' : '✗ Invincibility OFF';
+                            status.style.color = debugInvincible ? '#4CAF50' : '#ff6b6b';
+                            break;
+
+                        case 'killall':
+                            const killedCount = enemies.length;
+                            enemies = [];
+                            enemyBullets = [];
+                            status.textContent = `✓ Killed ${killedCount} enemies!`;
+                            status.style.color = '#4CAF50';
+                            break;
+
+                        case 'spawn10':
+                            const spawnTypes = ['basic', 'fast', 'shooter', 'tank'];
+                            for (let i = 0; i < 10; i++) {
+                                const angle = (Math.PI * 2 * i) / 10;
+                                const dist = 300;
+                                enemies.push({
+                                    x: player.x + Math.cos(angle) * dist,
+                                    y: player.y + Math.sin(angle) * dist,
+                                    type: spawnTypes[Math.floor(Math.random() * spawnTypes.length)],
+                                    health: 50,
+                                    maxHealth: 50,
+                                    speed: 1,
+                                    damage: 5,
+                                    size: 12,
+                                    color: 0xcc3333,
+                                    lastFire: 0,
+                                    fireCooldownMax: 2000,
+                                    canShoot: Math.random() > 0.5,
+                                    range: 8
+                                });
+                            }
+                            status.textContent = '✓ Spawned 10 enemies!';
+                            status.style.color = '#4CAF50';
+                            break;
+
+                        case 'heal':
+                            player.health = player.maxHealth;
+                            buildings.forEach(b => b.health = b.maxHealth);
+                            updatePlayerHealthUI();
+                            status.textContent = '✓ Everything healed!';
+                            status.style.color = '#4CAF50';
+                            break;
+
+                        case 'speed':
+                            debugSpeedBoost = !debugSpeedBoost;
+                            player.speed = debugSpeedBoost ? CONFIG.PLAYER.SPEED * 2 : CONFIG.PLAYER.SPEED;
+                            status.textContent = debugSpeedBoost ? '✓ Speed boost ON' : '✗ Speed boost OFF';
+                            status.style.color = debugSpeedBoost ? '#4CAF50' : '#ff6b6b';
+                            break;
+
+                        case 'clearwave':
+                            enemies = [];
+                            enemyBullets = [];
+                            waveTimer = 1;
+                            status.textContent = '✓ Wave cleared!';
+                            status.style.color = '#4CAF50';
+                            break;
+                    }
+
+                    // Clear status after 3 seconds
+                    setTimeout(() => {
+                        status.textContent = 'Ready';
+                        status.style.color = '#4CAF50';
+                    }, 3000);
+                });
             });
         }
 
@@ -1017,6 +1069,9 @@
 
             // Generate flowing small ponds
             generatePonds(seed);
+
+            // Generate wall formations
+            generateWalls(seed);
 
             // Clear center area for core (larger for 3x3 core)
             const cx = Math.floor(MAP_WIDTH / 2);
@@ -1096,6 +1151,64 @@
                     // Occasionally widen or narrow
                     if (Math.random() < 0.2) {
                         // Small variation handled by noise in the loop above
+                    }
+                }
+            }
+        }
+
+        function generateWalls(seed) {
+            // Generate mountain rock formations
+            const mountainCount = 5 + Math.floor(Math.random() * 4); // 5-9 mountain ranges
+            const cx = Math.floor(MAP_WIDTH / 2);
+            const cy = Math.floor(MAP_HEIGHT / 2);
+
+            for (let m = 0; m < mountainCount; m++) {
+                // Mountain center - avoid core
+                let centerX, centerY;
+                let attempts = 0;
+                do {
+                    centerX = 15 + Math.floor(Math.random() * (MAP_WIDTH - 30));
+                    centerY = 15 + Math.floor(Math.random() * (MAP_HEIGHT - 30));
+                    attempts++;
+                } while (Math.abs(centerX - cx) < 20 && Math.abs(centerY - cy) < 20 && attempts < 30);
+
+                if (attempts >= 30) continue;
+
+                // Mountain size and shape
+                const baseRadius = 8 + Math.floor(Math.random() * 8); // 8-16 tiles radius
+                const elongation = 0.5 + Math.random() * 1.5; // Stretch factor
+                const rotation = Math.random() * Math.PI;
+
+                // Generate mountain using irregular circle with noise
+                for (let dy = -baseRadius * 2; dy <= baseRadius * 2; dy++) {
+                    for (let dx = -baseRadius * 2; dx <= baseRadius * 2; dx++) {
+                        const wx = centerX + dx;
+                        const wy = centerY + dy;
+
+                        if (wx < 5 || wx >= MAP_WIDTH - 5 || wy < 5 || wy >= MAP_HEIGHT - 5) continue;
+                        if (terrainMap[wy][wx] === TERRAIN.WATER) continue;
+
+                        // Rotate point
+                        const rotX = dx * Math.cos(rotation) - dy * Math.sin(rotation);
+                        const rotY = dx * Math.sin(rotation) + dy * Math.cos(rotation);
+
+                        // Apply elongation
+                        const normX = rotX / baseRadius;
+                        const normY = rotY / (baseRadius * elongation);
+                        const dist = Math.sqrt(normX * normX + normY * normY);
+
+                        // Add perlin-like noise for organic edge
+                        const noiseVal = Math.sin(wx * 0.3 + wy * 0.2) * 0.3 +
+                                        Math.cos(wx * 0.2 - wy * 0.3) * 0.2;
+                        const threshold = 1.0 + noiseVal;
+
+                        // Place rock based on distance with falloff
+                        if (dist < threshold) {
+                            const density = 1 - (dist / threshold);
+                            if (Math.random() < density * 0.85) {
+                                terrainMap[wy][wx] = TERRAIN.WALL;
+                            }
+                        }
                     }
                 }
             }
@@ -1592,10 +1705,12 @@
                 } else {
                     // Show terrain info
                     const terrain = terrainMap[tile.y][tile.x];
-                    const terrainNames = { 0: 'Grass', 1: 'Sand', 2: 'Water', 3: 'Stone', 4: 'Dark Stone' };
+                    const terrainNames = { 0: 'Grass', 1: 'Sand', 2: 'Water', 3: 'Stone', 4: 'Dark Stone', 5: 'Wall' };
                     let html = `<div class="tooltip-title" style="color:#888">${terrainNames[terrain] || 'Unknown'}</div>`;
                     if (terrain === 2) {
                         html += `<div class="tooltip-stat" style="color:#ff6666">Cannot build here</div>`;
+                    } else if (terrain === 5) {
+                        html += `<div class="tooltip-stat" style="color:#ff6666">Solid wall - Cannot build</div>`;
                     } else {
                         html += `<div class="tooltip-stat">Empty tile</div>`;
                     }
@@ -1644,6 +1759,7 @@
                     if (checkX >= MAP_WIDTH || checkY >= MAP_HEIGHT) return;
                     if (map[checkY][checkX] !== 0) return;
                     if (terrainMap[checkY][checkX] === TERRAIN.WATER) return;
+                    if (terrainMap[checkY][checkX] === TERRAIN.WALL) return;
                 }
             }
 
@@ -3162,6 +3278,9 @@
                         case TERRAIN.DARK_STONE:
                             baseColor = checker ? 0x3a3a48 : 0x32323e;
                             break;
+                        case TERRAIN.WALL:
+                            baseColor = checker ? 0x4a4a4a : 0x3a3a3a;
+                            break;
                         default:
                             baseColor = 0x2d4a2d;
                     }
@@ -3222,6 +3341,55 @@
                             if ((x % 4 === 0) && (y % 4 === 0)) {
                                 graphics.fillStyle(0x505058);
                                 graphics.fillCircle(screenX + 4, screenY + 4, 2);
+                            }
+                            break;
+
+                        case TERRAIN.WALL:
+                            // Mountain rock with hexagonal geometric style (Siligone aesthetic)
+                            // Base colors - dark gray rock
+                            const rockShade = seed % 3;
+                            const rockBase = rockShade === 0 ? 0x4a4a52 : (rockShade === 1 ? 0x525258 : 0x58585e);
+
+                            // Shadow
+                            graphics.fillStyle(0x1a1a1a, 0.5);
+                            graphics.fillRect(screenX + 2, screenY + 2, TILE_SIZE - 1, TILE_SIZE - 1);
+
+                            // Main rock body
+                            graphics.fillStyle(rockBase);
+                            graphics.fillRect(screenX, screenY, TILE_SIZE, TILE_SIZE);
+
+                            // Hexagonal geometric pattern overlay
+                            const hexSize = 4;
+                            const hexOffset = (seed % 2) * hexSize;
+                            graphics.fillStyle(0x3a3a42, 0.6);
+
+                            // Draw small hex pattern
+                            for (let i = 0; i < 6; i++) {
+                                const angle = (i * Math.PI / 3);
+                                const hx = screenX + TILE_SIZE/2 + Math.cos(angle) * hexSize + hexOffset;
+                                const hy = screenY + TILE_SIZE/2 + Math.sin(angle) * hexSize + hexOffset;
+                                graphics.fillCircle(hx, hy, 2);
+                            }
+
+                            // Rock crack lines (geometric)
+                            graphics.fillStyle(0x2a2a2e, 0.7);
+                            if (seed % 4 === 0) {
+                                graphics.fillRect(screenX + 4, screenY, 1, TILE_SIZE);
+                            } else if (seed % 4 === 1) {
+                                graphics.fillRect(screenX, screenY + 4, TILE_SIZE, 1);
+                            }
+
+                            // Edge highlight for depth
+                            graphics.fillStyle(0x6a6a72, 0.4);
+                            graphics.fillRect(screenX, screenY, TILE_SIZE - 1, 1);
+                            graphics.fillRect(screenX, screenY, 1, TILE_SIZE - 1);
+
+                            // Circular accent (Siligone style)
+                            if (seed % 5 === 0) {
+                                graphics.fillStyle(0x5a5a62, 0.5);
+                                graphics.fillCircle(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, 3);
+                                graphics.lineStyle(1, 0x3a3a42, 0.6);
+                                graphics.strokeCircle(screenX + TILE_SIZE/2, screenY + TILE_SIZE/2, 5);
                             }
                             break;
                     }
@@ -3559,11 +3727,22 @@
                 // Only draw if on screen
                 if (screenX > -10 && screenX < window.innerWidth + 10 &&
                     screenY > -10 && screenY < window.innerHeight + 10) {
-                    graphics.fillStyle(getOreColor(item.type));
+                    const oreColor = getOreColor(item.type);
+                    // Enhanced ore item with glow
+                    graphics.fillStyle(oreColor, 0.3);
+                    graphics.fillCircle(screenX, screenY, 7);
+                    graphics.fillStyle(oreColor, 0.6);
+                    graphics.fillCircle(screenX, screenY, 5.5);
+                    graphics.fillStyle(oreColor);
                     graphics.fillCircle(screenX, screenY, 5);
-                    // Add a small highlight for 3D effect
+                    // Outline for definition
+                    graphics.lineStyle(0.8, oreColor * 0.6, 0.9);
+                    graphics.strokeCircle(screenX, screenY, 5);
+                    // 3D highlight
+                    graphics.fillStyle(0xffffff, 0.5);
+                    graphics.fillCircle(screenX - 1.5, screenY - 1.5, 2.5);
                     graphics.fillStyle(0xffffff, 0.3);
-                    graphics.fillCircle(screenX - 1, screenY - 1, 2);
+                    graphics.fillCircle(screenX - 1, screenY - 1, 1.5);
                 }
             });
 
@@ -4053,51 +4232,178 @@
                     graphics.fillStyle(enemy.color);
                     
                     if (enemy.type === 'basic') {
-                        // Basic enemy - hexagonal assault drone
-                        graphics.fillCircle(screenX, screenY, enemy.size);
-                        graphics.fillStyle(enemy.color * 0.7);
-                        graphics.fillCircle(screenX, screenY, enemy.size * 0.6);
-                        // Directional indicator
-                        graphics.fillStyle(0xff8888);
+                        // Basic enemy - dagger style with angular wings
                         const angle = Math.atan2(dy, dx);
-                        graphics.fillCircle(screenX + Math.cos(angle) * 5, screenY + Math.sin(angle) * 5, 3);
-                        // Side panels
-                        graphics.fillStyle(0xaa3333);
-                        graphics.fillRect(screenX - enemy.size, screenY - 2, enemy.size * 0.6, 4);
-                        graphics.fillRect(screenX + enemy.size * 0.4, screenY - 2, enemy.size * 0.6, 4);
+                        const s = enemy.size;
+
+                        // Shadow
+                        graphics.fillStyle(0x000000, 0.35);
+                        graphics.fillEllipse(screenX + 2, screenY + 3, s * 1.2, s * 0.6);
+
+                        // Angular wings/blades (dagger style)
+                        graphics.fillStyle(0xb85a30);
+                        graphics.beginPath();
+                        graphics.moveTo(screenX + Math.cos(angle - 2.3) * s * 1.3, screenY + Math.sin(angle - 2.3) * s * 1.3);
+                        graphics.lineTo(screenX + Math.cos(angle - 1.8) * s * 0.5, screenY + Math.sin(angle - 1.8) * s * 0.5);
+                        graphics.lineTo(screenX + Math.cos(angle - 0.8) * s * 0.7, screenY + Math.sin(angle - 0.8) * s * 0.7);
+                        graphics.fillPath();
+
+                        graphics.beginPath();
+                        graphics.moveTo(screenX + Math.cos(angle + 2.3) * s * 1.3, screenY + Math.sin(angle + 2.3) * s * 1.3);
+                        graphics.lineTo(screenX + Math.cos(angle + 1.8) * s * 0.5, screenY + Math.sin(angle + 1.8) * s * 0.5);
+                        graphics.lineTo(screenX + Math.cos(angle + 0.8) * s * 0.7, screenY + Math.sin(angle + 0.8) * s * 0.7);
+                        graphics.fillPath();
+
+                        // Main body - angular hexagon
+                        graphics.fillStyle(0xd46a40);
+                        graphics.beginPath();
+                        for (let i = 0; i < 6; i++) {
+                            const a = angle + (i * Math.PI / 3);
+                            const px = screenX + Math.cos(a) * s * 0.8;
+                            const py = screenY + Math.sin(a) * s * 0.8;
+                            if (i === 0) graphics.moveTo(px, py);
+                            else graphics.lineTo(px, py);
+                        }
+                        graphics.closePath();
+                        graphics.fillPath();
+
+                        // Outline
+                        graphics.lineStyle(1.5, 0x8a3a20, 1);
+                        graphics.strokePath();
+
+                        // Core detail
+                        graphics.fillStyle(0xff8855);
+                        graphics.fillCircle(screenX, screenY, s * 0.4);
+
+                        // Front spike
+                        graphics.fillStyle(0xff6633);
+                        graphics.beginPath();
+                        graphics.moveTo(screenX + Math.cos(angle) * s * 1.1, screenY + Math.sin(angle) * s * 1.1);
+                        graphics.lineTo(screenX + Math.cos(angle - 0.5) * s * 0.5, screenY + Math.sin(angle - 0.5) * s * 0.5);
+                        graphics.lineTo(screenX + Math.cos(angle + 0.5) * s * 0.5, screenY + Math.sin(angle + 0.5) * s * 0.5);
+                        graphics.closePath();
+                        graphics.fillPath();
+
                     } else if (enemy.type === 'fast') {
-                        // Fast enemy - sleek rocket with thrusters
+                        // Fast enemy - sleek dagger with blade wings
                         const angle = Math.atan2(dy, dx);
-                        graphics.fillCircle(screenX, screenY, enemy.size);
-                        // Rocket body
-                        graphics.fillStyle(0xff8800);
-                        graphics.fillCircle(screenX, screenY, enemy.size * 0.7);
-                        // Nose cone
-                        graphics.fillStyle(0xffaa00);
-                        graphics.fillCircle(screenX + Math.cos(angle) * 4, screenY + Math.sin(angle) * 4, enemy.size * 0.5);
-                        // Thruster flames
-                        const thrustX = screenX - Math.cos(angle) * enemy.size;
-                        const thrustY = screenY - Math.sin(angle) * enemy.size;
-                        graphics.fillStyle(0xff6600, 0.8);
-                        graphics.fillCircle(thrustX, thrustY, 4);
-                        graphics.fillStyle(0xffff00, 0.6);
-                        graphics.fillCircle(thrustX, thrustY, 2);
-                        // Warning stripes (kamikaze indicator)
-                        graphics.fillStyle(0xffff00);
-                        graphics.fillRect(screenX - 4, screenY - 1, 3, 2);
-                        graphics.fillRect(screenX + 1, screenY - 1, 3, 2);
+                        const s = enemy.size;
+
+                        // Shadow
+                        graphics.fillStyle(0x000000, 0.35);
+                        graphics.fillEllipse(screenX + 2, screenY + 3, s * 1.4, s * 0.5);
+
+                        // Swept back wings
+                        graphics.fillStyle(0xcc7722);
+                        graphics.beginPath();
+                        graphics.moveTo(screenX + Math.cos(angle - 2.8) * s * 1.6, screenY + Math.sin(angle - 2.8) * s * 1.6);
+                        graphics.lineTo(screenX + Math.cos(angle - 2.0) * s * 0.4, screenY + Math.sin(angle - 2.0) * s * 0.4);
+                        graphics.lineTo(screenX + Math.cos(angle - 1.2) * s * 0.6, screenY + Math.sin(angle - 1.2) * s * 0.6);
+                        graphics.fillPath();
+
+                        graphics.beginPath();
+                        graphics.moveTo(screenX + Math.cos(angle + 2.8) * s * 1.6, screenY + Math.sin(angle + 2.8) * s * 1.6);
+                        graphics.lineTo(screenX + Math.cos(angle + 2.0) * s * 0.4, screenY + Math.sin(angle + 2.0) * s * 0.4);
+                        graphics.lineTo(screenX + Math.cos(angle + 1.2) * s * 0.6, screenY + Math.sin(angle + 1.2) * s * 0.6);
+                        graphics.fillPath();
+
+                        // Main body - elongated diamond
+                        graphics.fillStyle(0xffaa33);
+                        graphics.beginPath();
+                        graphics.moveTo(screenX + Math.cos(angle) * s * 1.3, screenY + Math.sin(angle) * s * 1.3);
+                        graphics.lineTo(screenX + Math.cos(angle - 1.5) * s * 0.5, screenY + Math.sin(angle - 1.5) * s * 0.5);
+                        graphics.lineTo(screenX + Math.cos(angle + Math.PI) * s * 0.6, screenY + Math.sin(angle + Math.PI) * s * 0.6);
+                        graphics.lineTo(screenX + Math.cos(angle + 1.5) * s * 0.5, screenY + Math.sin(angle + 1.5) * s * 0.5);
+                        graphics.closePath();
+                        graphics.fillPath();
+
+                        // Outline
+                        graphics.lineStyle(1.5, 0x995522, 1);
+                        graphics.strokePath();
+
+                        // Engine glow trails
+                        const thrustPulse = Math.sin(Date.now() / 40) * 0.3 + 0.7;
+                        graphics.fillStyle(0xff6600, thrustPulse * 0.6);
+                        graphics.fillCircle(screenX - Math.cos(angle) * s * 0.5, screenY - Math.sin(angle) * s * 0.5, 4);
+                        graphics.fillStyle(0xffcc00, thrustPulse * 0.8);
+                        graphics.fillCircle(screenX - Math.cos(angle) * s * 0.5, screenY - Math.sin(angle) * s * 0.5, 2.5);
+
                     } else {
-                        // Default circular body for other types
-                        graphics.fillCircle(screenX, screenY, enemy.size);
+                        // Default - dagger style drone with detail
+                        const angle = Math.atan2(dy, dx);
+                        const s = enemy.size;
+
+                        // Shadow
+                        graphics.fillStyle(0x000000, 0.35);
+                        graphics.fillEllipse(screenX + 2, screenY + 3, s * 1.1, s * 0.6);
+
+                        // Side blades
+                        graphics.fillStyle(enemy.color * 0.7);
+                        graphics.beginPath();
+                        graphics.moveTo(screenX + Math.cos(angle - 2.5) * s * 1.2, screenY + Math.sin(angle - 2.5) * s * 1.2);
+                        graphics.lineTo(screenX + Math.cos(angle - 1.9) * s * 0.6, screenY + Math.sin(angle - 1.9) * s * 0.6);
+                        graphics.lineTo(screenX + Math.cos(angle - 1.3) * s * 0.7, screenY + Math.sin(angle - 1.3) * s * 0.7);
+                        graphics.fillPath();
+
+                        graphics.beginPath();
+                        graphics.moveTo(screenX + Math.cos(angle + 2.5) * s * 1.2, screenY + Math.sin(angle + 2.5) * s * 1.2);
+                        graphics.lineTo(screenX + Math.cos(angle + 1.9) * s * 0.6, screenY + Math.sin(angle + 1.9) * s * 0.6);
+                        graphics.lineTo(screenX + Math.cos(angle + 1.3) * s * 0.7, screenY + Math.sin(angle + 1.3) * s * 0.7);
+                        graphics.fillPath();
+
+                        // Main hexagonal body
+                        graphics.fillStyle(enemy.color);
+                        graphics.beginPath();
+                        for (let i = 0; i < 6; i++) {
+                            const a = angle + (i * Math.PI / 3);
+                            const px = screenX + Math.cos(a) * s * 0.75;
+                            const py = screenY + Math.sin(a) * s * 0.75;
+                            if (i === 0) graphics.moveTo(px, py);
+                            else graphics.lineTo(px, py);
+                        }
+                        graphics.closePath();
+                        graphics.fillPath();
+
+                        // Outline
+                        graphics.lineStyle(1.5, enemy.color * 0.5, 0.9);
+                        graphics.strokePath();
+
+                        // Inner core with pulse
+                        const corePulse = Math.sin(Date.now() / 200 + screenX) * 0.2 + 0.8;
+                        graphics.fillStyle(enemy.color * 1.3, corePulse);
+                        graphics.fillCircle(screenX, screenY, s * 0.4);
+
+                        // Directional details
+                        graphics.fillStyle(0xffffff, 0.6);
+                        graphics.beginPath();
+                        graphics.moveTo(screenX + Math.cos(angle) * s * 0.9, screenY + Math.sin(angle) * s * 0.9);
+                        graphics.lineTo(screenX + Math.cos(angle - 0.6) * s * 0.4, screenY + Math.sin(angle - 0.6) * s * 0.4);
+                        graphics.lineTo(screenX + Math.cos(angle + 0.6) * s * 0.4, screenY + Math.sin(angle + 0.6) * s * 0.4);
+                        graphics.closePath();
+                        graphics.fillPath();
                     }
 
                     // Details based on type
                     const angle = Math.atan2(dy, dx);
 
                     if (enemy.type === 'shooter') {
-                        // Gun barrel
-                        graphics.fillStyle(0x333333);
+                        // Gun barrel - polished metallic
+                        graphics.fillStyle(0x2a2a2a);
                         graphics.fillRect(
+                            screenX + Math.cos(angle) * enemy.size * 0.5 - 2,
+                            screenY + Math.sin(angle) * enemy.size * 0.5 - 2,
+                            enemy.size * 0.7, 4
+                        );
+                        // Barrel highlight
+                        graphics.fillStyle(0x4a4a4a, 0.6);
+                        graphics.fillRect(
+                            screenX + Math.cos(angle) * enemy.size * 0.5 - 2,
+                            screenY + Math.sin(angle) * enemy.size * 0.5 - 2,
+                            enemy.size * 0.7, 1.5
+                        );
+                        // Barrel outline
+                        graphics.lineStyle(1, 0x1a1a1a, 0.9);
+                        graphics.strokeRect(
                             screenX + Math.cos(angle) * enemy.size * 0.5 - 2,
                             screenY + Math.sin(angle) * enemy.size * 0.5 - 2,
                             enemy.size * 0.7, 4
@@ -4105,59 +4411,104 @@
                     }
 
                     if (enemy.type === 'sniper') {
-                        // Long sniper barrel
-                        graphics.fillStyle(0x222244);
+                        // Long sniper barrel - sleek and polished
+                        graphics.fillStyle(0x1a1a3a);
                         graphics.fillRect(
                             screenX + Math.cos(angle) * enemy.size * 0.3 - 1,
                             screenY + Math.sin(angle) * enemy.size * 0.3 - 1,
                             enemy.size * 1.2, 3
                         );
-                        // Scope
-                        graphics.fillStyle(0x6666ff);
+                        graphics.lineStyle(0.8, 0x0a0a2a, 0.9);
+                        graphics.strokeRect(
+                            screenX + Math.cos(angle) * enemy.size * 0.3 - 1,
+                            screenY + Math.sin(angle) * enemy.size * 0.3 - 1,
+                            enemy.size * 1.2, 3
+                        );
+                        // Scope - glowing
+                        graphics.fillStyle(0x4444ff, 0.5);
+                        graphics.fillCircle(screenX, screenY - 3, 4);
+                        graphics.fillStyle(0x7777ff);
                         graphics.fillCircle(screenX, screenY - 3, 3);
+                        graphics.lineStyle(1, 0x3333cc, 0.8);
+                        graphics.strokeCircle(screenX, screenY - 3, 3);
+                        graphics.fillStyle(0xccccff, 0.8);
+                        graphics.fillCircle(screenX, screenY - 3, 1.5);
                     }
 
                     if (enemy.type === 'artillery') {
-                        // Mortar tube
-                        graphics.fillStyle(0x224422);
+                        // Mortar tube - heavy and polished
+                        graphics.fillStyle(0x1a3a1a);
                         graphics.fillCircle(screenX, screenY, enemy.size * 0.5);
-                        graphics.fillStyle(0x335533);
+                        graphics.lineStyle(1.2, 0x0a2a0a, 0.9);
+                        graphics.strokeCircle(screenX, screenY, enemy.size * 0.5);
+                        graphics.fillStyle(0x2a4a2a);
                         graphics.fillCircle(screenX, screenY, enemy.size * 0.35);
-                        // Barrel pointing up
-                        graphics.fillStyle(0x113311);
+                        // Barrel pointing up - with highlights
+                        graphics.fillStyle(0x0a2a0a);
                         graphics.fillRect(screenX - 3, screenY - enemy.size * 0.7, 6, enemy.size * 0.5);
+                        graphics.fillStyle(0x2a4a2a, 0.6);
+                        graphics.fillRect(screenX - 3, screenY - enemy.size * 0.7, 2, enemy.size * 0.5);
+                        graphics.lineStyle(1, 0x051505, 0.9);
+                        graphics.strokeRect(screenX - 3, screenY - enemy.size * 0.7, 6, enemy.size * 0.5);
                     }
 
                     if (enemy.type === 'tank') {
-                        // Tank treads
-                        graphics.fillStyle(0x443333);
+                        // Tank treads - enhanced
+                        graphics.fillStyle(0x3a2a2a);
                         graphics.fillRect(screenX - enemy.size, screenY - enemy.size * 0.4, enemy.size * 2, enemy.size * 0.8);
-                        // Tank body
-                        graphics.fillStyle(0x664444);
+                        graphics.lineStyle(1, 0x2a1a1a, 0.9);
+                        graphics.strokeRect(screenX - enemy.size, screenY - enemy.size * 0.4, enemy.size * 2, enemy.size * 0.8);
+                        // Tread segments
+                        graphics.fillStyle(0x2a1a1a, 0.5);
+                        for (let i = 0; i < 3; i++) {
+                            graphics.fillRect(screenX - enemy.size + i * enemy.size * 0.65, screenY - enemy.size * 0.3, 4, enemy.size * 0.6);
+                        }
+                        // Tank body - polished
+                        graphics.fillStyle(0x5a3a3a);
                         graphics.fillCircle(screenX, screenY, enemy.size * 0.6);
-                        // Turret
-                        graphics.fillStyle(0x553333);
+                        graphics.lineStyle(1.2, 0x3a2a2a, 0.9);
+                        graphics.strokeCircle(screenX, screenY, enemy.size * 0.6);
+                        graphics.fillStyle(0x7a5a5a, 0.5);
+                        graphics.fillCircle(screenX - 2, screenY - 2, enemy.size * 0.4);
+                        // Turret - metallic
+                        graphics.fillStyle(0x4a2a2a);
                         graphics.fillRect(
                             screenX + Math.cos(angle) * 2 - 2,
                             screenY + Math.sin(angle) * 2 - 2,
                             enemy.size * 0.8, 4
                         );
+                        graphics.fillStyle(0x6a4a4a, 0.6);
+                        graphics.fillRect(
+                            screenX + Math.cos(angle) * 2 - 2,
+                            screenY + Math.sin(angle) * 2 - 2,
+                            enemy.size * 0.8, 1.5
+                        );
                     }
 
                     if (enemy.type === 'swarm') {
-                        // Small fast wings
+                        // Small fast wings - animated and polished
                         const wingFlap = Math.sin(time / 30) * 3;
-                        graphics.fillStyle(0xcc66cc);
+                        graphics.fillStyle(0xaa44aa);
                         graphics.fillEllipse(screenX - 4, screenY + wingFlap, 3, 5);
                         graphics.fillEllipse(screenX + 4, screenY - wingFlap, 3, 5);
+                        graphics.lineStyle(0.8, 0x882288, 0.8);
+                        graphics.strokeEllipse(screenX - 4, screenY + wingFlap, 3, 5);
+                        graphics.strokeEllipse(screenX + 4, screenY - wingFlap, 3, 5);
+                        graphics.fillStyle(0xdd88dd, 0.5);
+                        graphics.fillEllipse(screenX - 4, screenY + wingFlap, 2, 3);
+                        graphics.fillEllipse(screenX + 4, screenY - wingFlap, 2, 3);
                     }
 
                     if (enemy.type === 'boss') {
-                        // Boss armor
-                        graphics.fillStyle(0x880000);
+                        // Boss armor - heavily polished
+                        graphics.fillStyle(0x770000);
                         graphics.fillCircle(screenX, screenY, enemy.size * 0.7);
-                        // Crown/horns
-                        graphics.fillStyle(0xffcc00);
+                        graphics.lineStyle(2, 0x550000, 0.9);
+                        graphics.strokeCircle(screenX, screenY, enemy.size * 0.7);
+                        graphics.fillStyle(0xaa3333, 0.5);
+                        graphics.fillCircle(screenX - 3, screenY - 3, enemy.size * 0.5);
+                        // Crown/horns - with glow
+                        graphics.fillStyle(0xddaa00);
                         graphics.beginPath();
                         graphics.moveTo(screenX - 8, screenY - enemy.size);
                         graphics.lineTo(screenX - 4, screenY - enemy.size - 8);
@@ -4166,13 +4517,30 @@
                         graphics.lineTo(screenX + 8, screenY - enemy.size);
                         graphics.closePath();
                         graphics.fillPath();
-                        // Glowing aura
-                        graphics.lineStyle(2, 0xffff00, Math.sin(time / 100) * 0.3 + 0.7);
+                        graphics.lineStyle(1.5, 0xaa7700, 0.9);
+                        graphics.strokePath();
+                        graphics.fillStyle(0xffee88, 0.6);
+                        graphics.beginPath();
+                        graphics.moveTo(screenX - 6, screenY - enemy.size - 1);
+                        graphics.lineTo(screenX - 4, screenY - enemy.size - 6);
+                        graphics.lineTo(screenX, screenY - enemy.size - 1);
+                        graphics.lineTo(screenX + 4, screenY - enemy.size - 6);
+                        graphics.lineTo(screenX + 6, screenY - enemy.size - 1);
+                        graphics.closePath();
+                        graphics.fillPath();
+                        // Glowing aura - enhanced
+                        const bossPulse = Math.sin(time / 100) * 0.3 + 0.7;
+                        graphics.lineStyle(3, 0xffff00, bossPulse * 0.4);
+                        graphics.strokeCircle(screenX, screenY, enemy.size + 6);
+                        graphics.lineStyle(2, 0xffffaa, bossPulse * 0.7);
                         graphics.strokeCircle(screenX, screenY, enemy.size + 4);
-                        // Gun turrets
-                        graphics.fillStyle(0x333333);
+                        // Gun turrets - polished
+                        graphics.fillStyle(0x2a2a2a);
                         graphics.fillRect(screenX - enemy.size * 0.8, screenY - 4, enemy.size * 0.6, 4);
                         graphics.fillRect(screenX + enemy.size * 0.3, screenY - 4, enemy.size * 0.6, 4);
+                        graphics.fillStyle(0x4a4a4a, 0.6);
+                        graphics.fillRect(screenX - enemy.size * 0.8, screenY - 4, enemy.size * 0.6, 1.5);
+                        graphics.fillRect(screenX + enemy.size * 0.3, screenY - 4, enemy.size * 0.6, 1.5);
                     }
 
                     // Health bar
@@ -4293,12 +4661,19 @@
                     const screenX = bullet.x - camera.x;
                     const screenY = bullet.y - camera.y;
 
-                    // Different bullet visuals based on enemy type
+                    // Different bullet visuals based on enemy type - polished
                     if (bullet.enemyType === 'sniper') {
-                        graphics.fillStyle(0x8844ff);
+                        // Sniper bullet with glow and trail
+                        graphics.fillStyle(0x6622dd, 0.3);
+                        graphics.fillCircle(screenX, screenY, 5);
+                        graphics.fillStyle(0x8844ff, 0.7);
+                        graphics.fillCircle(screenX, screenY, 3.5);
+                        graphics.fillStyle(0xaa66ff);
                         graphics.fillCircle(screenX, screenY, 3);
+                        graphics.fillStyle(0xddaaff, 0.8);
+                        graphics.fillCircle(screenX - 0.5, screenY - 0.5, 1.5);
                         // Trail
-                        graphics.lineStyle(2, 0x8844ff, 0.5);
+                        graphics.lineStyle(3, 0x8844ff, 0.3);
                         const trailLen = 15;
                         const dx = bullet.targetX - bullet.x;
                         const dy = bullet.targetY - bullet.y;
@@ -4308,19 +4683,41 @@
                                 screenX - (dx/dist) * trailLen,
                                 screenY - (dy/dist) * trailLen);
                         }
+                        graphics.lineStyle(1.5, 0xaa66ff, 0.6);
+                        if (dist > 0) {
+                            graphics.lineBetween(screenX, screenY,
+                                screenX - (dx/dist) * trailLen,
+                                screenY - (dy/dist) * trailLen);
+                        }
                     } else if (bullet.enemyType === 'artillery') {
-                        // Arc indicator
+                        // Arc indicator - polished
                         const progress = 1 - (Math.sqrt((bullet.targetX - bullet.x)**2 + (bullet.targetY - bullet.y)**2) /
                                              Math.sqrt((bullet.targetX - bullet.startX)**2 + (bullet.targetY - bullet.startY)**2 + 1));
                         const arcHeight = Math.sin(progress * Math.PI) * 20;
-                        graphics.fillStyle(0x88ff88);
+                        // Projectile with glow
+                        graphics.fillStyle(0x66dd66, 0.4);
+                        graphics.fillCircle(screenX, screenY - arcHeight, 7);
+                        graphics.fillStyle(0x88ff88, 0.8);
                         graphics.fillCircle(screenX, screenY - arcHeight, 5);
+                        graphics.fillStyle(0xaaffaa);
+                        graphics.fillCircle(screenX, screenY - arcHeight, 3.5);
+                        graphics.fillStyle(0xeeffee, 0.8);
+                        graphics.fillCircle(screenX - 0.5, screenY - arcHeight - 0.5, 2);
                         // Shadow
-                        graphics.fillStyle(0x000000, 0.3);
-                        graphics.fillCircle(screenX, screenY + 5, 3);
+                        graphics.fillStyle(0x000000, 0.4);
+                        graphics.fillCircle(screenX + 1, screenY + 6, 4);
+                        graphics.fillStyle(0x000000, 0.2);
+                        graphics.fillCircle(screenX + 1, screenY + 6, 3);
                     } else {
-                        graphics.fillStyle(0xff8800);
+                        // Default bullet - polished
+                        graphics.fillStyle(0xdd5500, 0.3);
+                        graphics.fillCircle(screenX, screenY, 6);
+                        graphics.fillStyle(0xff7700, 0.6);
+                        graphics.fillCircle(screenX, screenY, 5);
+                        graphics.fillStyle(0xff9933);
                         graphics.fillCircle(screenX, screenY, 4);
+                        graphics.fillStyle(0xffddaa, 0.8);
+                        graphics.fillCircle(screenX - 0.5, screenY - 0.5, 2);
                     }
                 }
             });
@@ -4518,8 +4915,18 @@
                     const screenY = bullet.y - camera.y;
                     const bulletColor = bullet.type === 'scatter' ? 0xffaa00 :
                                        bullet.type === 'alloy' ? 0xb8967a : 0xffff00;
+                    const bulletSize = bullet.type === 'scatter' ? 3 : 4;
+
+                    // Bullet glow effect - polished
+                    graphics.fillStyle(bulletColor, 0.3);
+                    graphics.fillCircle(screenX, screenY, bulletSize + 2);
+                    graphics.fillStyle(bulletColor, 0.6);
+                    graphics.fillCircle(screenX, screenY, bulletSize + 1);
                     graphics.fillStyle(bulletColor);
-                    graphics.fillCircle(screenX, screenY, bullet.type === 'scatter' ? 3 : 4);
+                    graphics.fillCircle(screenX, screenY, bulletSize);
+                    // Core highlight
+                    graphics.fillStyle(0xffffff, 0.8);
+                    graphics.fillCircle(screenX - 0.5, screenY - 0.5, bulletSize * 0.4);
                 }
             });
 
@@ -4558,13 +4965,17 @@
                     const screenX = bullet.x - camera.x;
                     const screenY = bullet.y - camera.y;
 
-                    // Cyan/blue bullet with glow effect
+                    // Cyan/blue bullet with enhanced glow effect - polished
+                    graphics.fillStyle(0x22dddd, 0.3);
+                    graphics.fillCircle(screenX, screenY, 8);
                     graphics.fillStyle(0x44ffff, 0.5);
                     graphics.fillCircle(screenX, screenY, 6);
-                    graphics.fillStyle(0x88ffff);
+                    graphics.fillStyle(0x88ffff, 0.8);
                     graphics.fillCircle(screenX, screenY, 4);
+                    graphics.fillStyle(0xccffff);
+                    graphics.fillCircle(screenX, screenY, 2.5);
                     graphics.fillStyle(0xffffff);
-                    graphics.fillCircle(screenX, screenY, 2);
+                    graphics.fillCircle(screenX - 0.5, screenY - 0.5, 1.5);
                 }
             });
 
@@ -4594,8 +5005,15 @@
                 const screenY = p.y - camera.y;
                 if (screenX > -20 && screenX < window.innerWidth + 20 &&
                     screenY > -20 && screenY < window.innerHeight + 20) {
-                    graphics.fillStyle(p.color, p.life / 30);
-                    graphics.fillCircle(screenX, screenY, p.size * (p.life / 30));
+                    const alpha = p.life / 30;
+                    const size = p.size * alpha;
+                    // Enhanced particle with glow
+                    graphics.fillStyle(p.color, alpha * 0.3);
+                    graphics.fillCircle(screenX, screenY, size * 1.5);
+                    graphics.fillStyle(p.color, alpha * 0.7);
+                    graphics.fillCircle(screenX, screenY, size * 1.2);
+                    graphics.fillStyle(p.color, alpha);
+                    graphics.fillCircle(screenX, screenY, size);
                 }
             }
             
@@ -4707,9 +5125,9 @@
                 graphics.strokeCircle(screenX, screenY, 25);
             }
 
-            // Shadow
-            graphics.fillStyle(0x000000, 0.3);
-            graphics.fillEllipse(screenX + 2, screenY + 3, 16, 10);
+            // Shadow (enhanced)
+            graphics.fillStyle(0x000000, 0.4);
+            graphics.fillEllipse(screenX + 3, screenY + 4, 18, 11);
 
             // Calculate rotation for ship direction
             const cos = Math.cos(player.angle);
@@ -4723,46 +5141,94 @@
                 };
             }
 
-            // Main hull body (drawn as a polygon for rotation)
-            graphics.fillStyle(0x555566);
-            const hull1 = rotatePoint(-10, -8);
-            const hull2 = rotatePoint(10, -8);
-            const hull3 = rotatePoint(10, 8);
-            const hull4 = rotatePoint(-10, 8);
+            // Hexagonal ship body (Siligone geometric style)
+            // Main hex hull - dark blue-gray
+            graphics.fillStyle(0x4a5a6a);
+            const hexPoints = [];
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI / 3) - Math.PI / 2; // Start from top
+                const px = 12 * Math.cos(angle);
+                const py = 12 * Math.sin(angle);
+                hexPoints.push(rotatePoint(px, py));
+            }
             graphics.beginPath();
-            graphics.moveTo(hull1.x, hull1.y);
-            graphics.lineTo(hull2.x, hull2.y);
-            graphics.lineTo(hull3.x, hull3.y);
-            graphics.lineTo(hull4.x, hull4.y);
+            graphics.moveTo(hexPoints[0].x, hexPoints[0].y);
+            for (let i = 1; i < hexPoints.length; i++) {
+                graphics.lineTo(hexPoints[i].x, hexPoints[i].y);
+            }
             graphics.closePath();
             graphics.fillPath();
 
-            // Front angled section (nose)
-            graphics.fillStyle(0x666677);
-            const nose1 = rotatePoint(10, -8);
-            const nose2 = rotatePoint(16, -4);
-            const nose3 = rotatePoint(16, 4);
-            const nose4 = rotatePoint(10, 8);
+            // Hex outline
+            graphics.lineStyle(2, 0x2a3a4a, 0.9);
+            graphics.strokePath();
+
+            // Inner hex detail (smaller)
+            graphics.fillStyle(0x5a6a7a);
+            const innerHexPoints = [];
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI / 3) - Math.PI / 2;
+                const px = 8 * Math.cos(angle);
+                const py = 8 * Math.sin(angle);
+                innerHexPoints.push(rotatePoint(px, py));
+            }
             graphics.beginPath();
-            graphics.moveTo(nose1.x, nose1.y);
-            graphics.lineTo(nose2.x, nose2.y);
-            graphics.lineTo(nose3.x, nose3.y);
-            graphics.lineTo(nose4.x, nose4.y);
+            graphics.moveTo(innerHexPoints[0].x, innerHexPoints[0].y);
+            for (let i = 1; i < innerHexPoints.length; i++) {
+                graphics.lineTo(innerHexPoints[i].x, innerHexPoints[i].y);
+            }
             graphics.closePath();
             graphics.fillPath();
 
-            // Cockpit window
-            graphics.fillStyle(0x447788, 0.8);
-            const cockpit = rotatePoint(9, 0);
-            graphics.fillCircle(cockpit.x, cockpit.y, 4);
+            // Nose spike (front point)
+            graphics.fillStyle(0x7a8a9a);
+            const noseSpike1 = rotatePoint(12, -3);
+            const noseSpike2 = rotatePoint(20, 0);
+            const noseSpike3 = rotatePoint(12, 3);
+            graphics.beginPath();
+            graphics.moveTo(noseSpike1.x, noseSpike1.y);
+            graphics.lineTo(noseSpike2.x, noseSpike2.y);
+            graphics.lineTo(noseSpike3.x, noseSpike3.y);
+            graphics.closePath();
+            graphics.fillPath();
 
-            // Gun barrels (on the sides of the nose)
-            graphics.fillStyle(0x444455);
+            // Nose outline
+            graphics.lineStyle(1.5, 0x2a3a4a, 0.9);
+            graphics.strokePath();
+
+            // Cockpit window - hexagonal with glow (Siligone style)
+            graphics.fillStyle(0x44aacc, 0.8);
+            const cockpitHexPoints = [];
+            for (let i = 0; i < 6; i++) {
+                const angle = (i * Math.PI / 3);
+                const px = 4 * Math.cos(angle);
+                const py = 4 * Math.sin(angle);
+                cockpitHexPoints.push(rotatePoint(px, py));
+            }
+            graphics.beginPath();
+            graphics.moveTo(cockpitHexPoints[0].x, cockpitHexPoints[0].y);
+            for (let i = 1; i < cockpitHexPoints.length; i++) {
+                graphics.lineTo(cockpitHexPoints[i].x, cockpitHexPoints[i].y);
+            }
+            graphics.closePath();
+            graphics.fillPath();
+
+            // Cockpit glow
+            graphics.lineStyle(1.5, 0x66ccee, 0.7);
+            graphics.strokePath();
+
+            // Cockpit highlight
+            graphics.fillStyle(0xaaeeff, 0.5);
+            const cockpitCenter = rotatePoint(0, 0);
+            graphics.fillCircle(cockpitCenter.x - 1, cockpitCenter.y - 1, 2);
+
+            // Gun barrels (on the sides of the nose) - metallic
+            graphics.fillStyle(0x3a3a4a);
             const gun1Start = rotatePoint(12, -6);
             const gun1End = rotatePoint(20, -6);
             const gun2Start = rotatePoint(12, 6);
             const gun2End = rotatePoint(20, 6);
-            graphics.lineStyle(3, 0x444455);
+            graphics.lineStyle(3.5, 0x3a3a4a);
             graphics.beginPath();
             graphics.moveTo(gun1Start.x, gun1Start.y);
             graphics.lineTo(gun1End.x, gun1End.y);
@@ -4772,33 +5238,59 @@
             graphics.lineTo(gun2End.x, gun2End.y);
             graphics.strokePath();
 
-            // Gun barrel tips (muzzles)
-            graphics.fillStyle(0x333344);
-            graphics.fillCircle(gun1End.x, gun1End.y, 2);
-            graphics.fillCircle(gun2End.x, gun2End.y, 2);
+            // Gun barrel highlights
+            graphics.lineStyle(1.5, 0x5a5a6a, 0.7);
+            graphics.beginPath();
+            graphics.moveTo(gun1Start.x, gun1Start.y - 1);
+            graphics.lineTo(gun1End.x, gun1End.y - 1);
+            graphics.strokePath();
+            graphics.beginPath();
+            graphics.moveTo(gun2Start.x, gun2Start.y - 1);
+            graphics.lineTo(gun2End.x, gun2End.y - 1);
+            graphics.strokePath();
+
+            // Gun barrel tips (muzzles) - polished
+            graphics.fillStyle(0x2a2a3a);
+            graphics.fillCircle(gun1End.x, gun1End.y, 2.5);
+            graphics.fillCircle(gun2End.x, gun2End.y, 2.5);
+            graphics.lineStyle(1, 0x1a1a2a, 0.8);
+            graphics.strokeCircle(gun1End.x, gun1End.y, 2.5);
+            graphics.strokeCircle(gun2End.x, gun2End.y, 2.5);
 
             // Engine glow
             const engineGlow = Math.sin(Date.now() / 40) * 0.3 + 0.7;
             const isMoving = keys.W?.isDown || keys.S?.isDown || keys.A?.isDown || keys.D?.isDown;
             const glowIntensity = isMoving ? 1 : 0.5;
 
-            // Engine flames (at the back)
+            // Engine flames (at the back) - enhanced glow
             const eng1 = rotatePoint(-14, -4);
             const eng2 = rotatePoint(-14, 4);
-            graphics.fillStyle(0xff4400, engineGlow * glowIntensity * 0.7);
+
+            // Outer glow
+            graphics.fillStyle(0xff6600, engineGlow * glowIntensity * 0.4);
+            graphics.fillCircle(eng1.x, eng1.y, 5 + (isMoving ? 3 : 0));
+            graphics.fillCircle(eng2.x, eng2.y, 5 + (isMoving ? 3 : 0));
+
+            // Middle glow
+            graphics.fillStyle(0xff8800, engineGlow * glowIntensity * 0.7);
             graphics.fillCircle(eng1.x, eng1.y, 3 + (isMoving ? 2 : 0));
             graphics.fillCircle(eng2.x, eng2.y, 3 + (isMoving ? 2 : 0));
 
-            graphics.fillStyle(0xffaa00, engineGlow * glowIntensity * 0.5);
+            // Core flame
+            graphics.fillStyle(0xffdd00, engineGlow * glowIntensity * 0.9);
             graphics.fillCircle(eng1.x, eng1.y, 2);
             graphics.fillCircle(eng2.x, eng2.y, 2);
 
-            // Warning lights on front
-            graphics.fillStyle(0xffcc00);
-            const warn1 = rotatePoint(12, -5);
-            const warn2 = rotatePoint(12, 5);
+            // Warning lights on front - pulsing
+            const lightPulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+            graphics.fillStyle(0xffee00, lightPulse);
+            const warn1 = rotatePoint(13, -5);
+            const warn2 = rotatePoint(13, 5);
             graphics.fillCircle(warn1.x, warn1.y, 2);
             graphics.fillCircle(warn2.x, warn2.y, 2);
+            graphics.fillStyle(0xffffff, lightPulse * 0.8);
+            graphics.fillCircle(warn1.x, warn1.y, 1);
+            graphics.fillCircle(warn2.x, warn2.y, 1);
 
             // Mining laser - yellow beam to target ore (wider and brighter)
             if (miningMode && miningTarget) {

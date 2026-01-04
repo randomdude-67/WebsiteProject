@@ -1,5 +1,6 @@
 # CLAUDE.md
 
+
 ## Pommel - Semantic Code Search
 
 This project uses Pommel (v0.5.2) for semantic code search. Pommel indexes your codebase into semantic chunks and enables natural language search with hybrid vector + keyword matching.
