@@ -563,6 +563,12 @@
                 desc: 'Builds mining drones (50 lead+titanium, 30s)', craftTime: 30000,
                 width: 2, height: 2, buildTime: 3000
             },
+            'reconstructor': {
+                category: 'units', cost: { titanium: 150, alloy: 100, silicon: 80 }, health: 120,
+                icon: '🔧', name: 'Reconstructor', hotkey: null,
+                desc: 'Upgrades drones to miner units (50 titanium+silicon, 20s)', craftTime: 20000,
+                width: 2, height: 2, buildTime: 4000
+            },
             conveyor: {
                 category: 'transport', cost: { copper: 1 }, health: 20,
                 icon: '➡', name: 'Conveyor', hotkey: '3',
@@ -572,6 +578,11 @@
                 category: 'transport', cost: { alloy: 3, silicon: 2 }, health: 40,
                 icon: '⇒', name: 'A-Conveyor', hotkey: null,
                 desc: 'Fast alloy conveyor 2x speed', speedMult: 2, buildTime: 75
+            },
+            'bridge-conveyor': {
+                category: 'transport', cost: { copper: 20, lead: 10 }, health: 25,
+                icon: '⊡', name: 'Bridge', hotkey: null,
+                desc: 'Teleports items over 4 tiles', bridgeRange: 4, buildTime: 100
             },
             router: {
                 category: 'transport', cost: { copper: 15 }, health: 30,
@@ -609,6 +620,17 @@
                 category: 'power', cost: { copper: 60, lead: 60, titanium: 30, silicon: 20 }, health: 80,
                 icon: '⚡', name: 'L-P-Node', hotkey: null,
                 desc: 'Large power node 2x2, extended range', powerRange: 12, buildTime: 1500,
+                width: 2, height: 2
+            },
+            battery: {
+                category: 'power', cost: { copper: 40, lead: 60, silicon: 15 }, health: 60,
+                icon: '🔋', name: 'Battery', hotkey: null,
+                desc: 'Stores power (capacity: 5000)', powerStorage: 5000, buildTime: 800
+            },
+            'large-battery': {
+                category: 'power', cost: { titanium: 80, alloy: 60, silicon: 40, graphite: 30 }, health: 100,
+                icon: '🔌', name: 'L-Battery', hotkey: null,
+                desc: 'Large battery 2x2 (capacity: 20000)', powerStorage: 20000, buildTime: 2000,
                 width: 2, height: 2
             },
             turret: {
@@ -670,11 +692,10 @@
 
         // Game state
         let selectedBuilding = null;
-        let miningMode = false;
         let currentCategory = 'production';
         let rotation = 0;
         let miningCooldown = 0;
-        let miningTarget = null; // Store current mining target for laser rendering
+        let miningTarget = null; // Store current mining target for laser rendering (click to toggle)
         let tooltipCollapsed = false; // Track tooltip collapse state
         let buildings = [];
         let constructionQueue = []; // Buildings currently being built
@@ -684,6 +705,7 @@
         let items = [];
         let particles = [];
         let miners = []; // Mining drones
+        let minerUnits = []; // Upgraded miner units (ship-like, faster, more capacity)
         let wave = 0;
         let waveTimer = CONFIG.FIRST_WAVE_TIMER;
         let coreHealth = 500;
@@ -1398,6 +1420,7 @@
                 'silicon-smelter': 'linear-gradient(135deg, #ff9900, #cc6600)',
                 'alloy-factory': 'linear-gradient(135deg, #887766, #665544)',
                 'miner-constructor': 'linear-gradient(135deg, #44aa44, #227722)',
+                'reconstructor': 'linear-gradient(135deg, #5599ff, #3366cc)',
                 conveyor: 'linear-gradient(135deg, #555, #333)',
                 'alloy-conveyor': 'linear-gradient(135deg, #b8967a, #8a6a5a)',
                 'payload-conveyor': 'linear-gradient(135deg, #4a7c9b, #2a5c7b)',
@@ -1523,11 +1546,18 @@
                 return;
             }
 
-            // Left click when no building selected - toggle mining mode or mine
+            // Left click when no building selected - check for ore to mine
             if (!selectedBuilding) {
-                miningMode = !miningMode;
-                if (miningMode) {
-                    manualMine();
+                if (oreMap[tile.y] && oreMap[tile.y][tile.x]) {
+                    const worldX = tile.x * TILE_SIZE + TILE_SIZE / 2;
+                    const worldY = tile.y * TILE_SIZE + TILE_SIZE / 2;
+
+                    // Toggle mining: if already mining this node, stop; otherwise start
+                    if (miningTarget && miningTarget.x === worldX && miningTarget.y === worldY) {
+                        miningTarget = null;
+                    } else {
+                        miningTarget = { x: worldX, y: worldY };
+                    }
                 }
                 return;
             }
@@ -1568,10 +1598,15 @@
             const tooltip = document.getElementById('tooltip');
 
             if (tile.x >= 0 && tile.x < MAP_WIDTH && tile.y >= 0 && tile.y < MAP_HEIGHT) {
-                const building = buildings.find(b =>
+                let building = buildings.find(b =>
                     (b.x === tile.x && b.y === tile.y) ||
                     (b.type === 'core' && tile.x >= b.x && tile.x < b.x + 3 && tile.y >= b.y && tile.y < b.y + 3)
                 );
+
+                // If we found a tile reference, use the master building instead
+                if (building && building.isTileRef) {
+                    building = building.master;
+                }
 
                 if (building) {
                     const data = BUILDINGS[building.type] || { desc: 'Your main base - protect it!', health: 500 };
@@ -1664,6 +1699,15 @@
                     if (data.mineSpeed) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Base speed:</span> ${data.mineSpeed}x</div>`;
                     if (data.repairRange) html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Repair range:</span> ${data.repairRange} tiles</div>`;
 
+                    // Show power balance for power nodes
+                    if (data.powerRange && (building.type === 'power-node' || building.type === 'large-power-node')) {
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Power range:</span> ${data.powerRange} tiles</div>`;
+                        const surplus = powerGrid.production - powerGrid.consumption;
+                        const surplusColor = surplus >= 0 ? '#4CAF50' : '#ff4444';
+                        const surplusText = surplus >= 0 ? `+${surplus}` : surplus;
+                        html += `<div class="tooltip-stat"><span class="tooltip-stat-label">Grid balance:</span> <span style="color:${surplusColor}">${surplusText}</span> (${powerGrid.production}/${powerGrid.consumption})</div>`;
+                    }
+
                     // Position info
                     html += `<div class="tooltip-stat" style="margin-top:8px;color:#666;font-size:10px">Position: (${building.x}, ${building.y})</div>`;
                     } // Close tooltipCollapsed check
@@ -1742,8 +1786,22 @@
         }
 
         function getOreColor(type) {
-            const colors = { copper: 0xd4a574, lead: 0x888899, coal: 0x444444, titanium: 0x4a7c9b, graphite: 0x2a2a2a, alloy: 0xb8967a, sand: 0xc9b592 };
+            const colors = { copper: 0xd4a574, lead: 0x888899, coal: 0x444444, titanium: 0x4a7c9b, graphite: 0x2a2a2a, alloy: 0xb8967a, sand: 0xc9b592, silicon: 0x6a4c9c };
             return colors[type] || 0xffffff;
+        }
+
+        function getOreIcon(type) {
+            const icons = {
+                copper: '🔶',
+                lead: '⬛',
+                coal: '🪨',
+                titanium: '💎',
+                graphite: '⬜',
+                alloy: '🔷',
+                sand: '⏹',
+                silicon: '🔸'
+            };
+            return icons[type] || '●';
         }
 
         function tryDeleteBuilding(x, y) {
@@ -1877,6 +1935,13 @@
                 building.craftProgress = 0;
             }
 
+            // Reconstructor stores titanium and silicon
+            if (selectedBuilding === 'reconstructor') {
+                building.titaniumStored = 0;
+                building.siliconStored = 0;
+                building.craftProgress = 0;
+            }
+
             // Graphite press stores coal
             if (selectedBuilding === 'graphite-press') {
                 building.coalStored = 0;
@@ -1889,6 +1954,12 @@
                 building.coalStored = 0;
                 building.craftProgress = 0;
                 building.powered = false;
+            }
+
+            // Battery buildings store power
+            if (selectedBuilding === 'battery' || selectedBuilding === 'large-battery') {
+                building.powerStored = 0;
+                building.maxPowerStorage = data.powerStorage || 0;
             }
 
             // Turrets start with NO ammo - must be fed via conveyors
@@ -2053,6 +2124,9 @@
 
         function produceTick() {
             buildings.forEach(b => {
+                // Skip tile references to avoid processing the same building multiple times
+                if (b.isTileRef) return;
+
                 if ((b.type === 'drill' || b.type === 'pneumatic-drill' || b.type === 'alloy-drill') && b.ore) {
                     // Safety check: normal drills cannot mine titanium
                     if (b.type === 'drill' && b.ore === 'titanium') {
@@ -2078,6 +2152,9 @@
             let totalConsumption = 0;
 
             buildings.forEach(b => {
+                // Skip tile references to avoid processing the same building multiple times
+                if (b.isTileRef) return;
+
                 if (b.type === 'generator') {
                     const data = BUILDINGS.generator;
                     if (b.coalStored > data.coalConsume) {
@@ -2103,6 +2180,9 @@
 
             // Count power consumers
             buildings.forEach(b => {
+                // Skip tile references to avoid counting the same building multiple times
+                if (b.isTileRef) return;
+
                 if (b.type === 'laser') {
                     totalConsumption += BUILDINGS.laser.powerUse;
                 }
@@ -2193,8 +2273,8 @@
                 }
             });
 
-            // Miner constructor crafting (uses 20 power when active)
-            buildings.filter(b => b.type === 'miner-constructor').forEach(constructor => {
+            // Miner constructor crafting (uses 20 power when active) - only process master buildings, not tile refs
+            buildings.filter(b => b.type === 'miner-constructor' && !b.isTileRef).forEach(constructor => {
                 if (constructor.leadStored >= 50 && constructor.titaniumStored >= 50) {
                     // Craft speed affected by powerEfficiency, but always makes some progress (min 20%)
                     const effectivePower = Math.max(0.2, powerEfficiency); // Minimum 20% speed even with no power
@@ -2205,6 +2285,22 @@
                         constructor.titaniumStored -= 50;
                         // Spawn a miner unit
                         spawnMiner(constructor);
+                    }
+                }
+            });
+
+            // Reconstructor crafting - upgrades drones to miner units - only process master buildings, not tile refs
+            buildings.filter(b => b.type === 'reconstructor' && !b.isTileRef).forEach(reconstructor => {
+                if (reconstructor.titaniumStored >= 50 && reconstructor.siliconStored >= 50) {
+                    // Craft speed affected by powerEfficiency, but always makes some progress (min 20%)
+                    const effectivePower = Math.max(0.2, powerEfficiency);
+                    reconstructor.craftProgress = (reconstructor.craftProgress || 0) + (500 * effectivePower);
+                    if (reconstructor.craftProgress >= BUILDINGS['reconstructor'].craftTime) {
+                        reconstructor.craftProgress = 0;
+                        reconstructor.titaniumStored -= 50;
+                        reconstructor.siliconStored -= 50;
+                        // Spawn an upgraded miner unit
+                        spawnMinerUnit(reconstructor);
                     }
                 }
             });
@@ -2292,6 +2388,52 @@
                     homeY: constructorCenterY
                 });
                 spawnParticles(spawnX, spawnY, 0x44ff44, 8);
+            }
+        }
+
+        function spawnMinerUnit(reconstructor) {
+            // Miner units mine copper and lead faster with more capacity (60 instead of 30)
+            // They look like small ships
+            const targetOreType = (resources.copper || 0) > (resources.lead || 0) ? 'lead' : 'copper';
+
+            // Get spawn position based on reconstructor rotation
+            const dir = getDirection(reconstructor.rotation);
+            const reconstructorCenterX = reconstructor.x + 1;
+            const reconstructorCenterY = reconstructor.y + 1;
+
+            // Spawn unit at the edge in the rotation direction
+            const spawnX = (reconstructorCenterX + dir.x * 1.5) * TILE_SIZE;
+            const spawnY = (reconstructorCenterY + dir.y * 1.5) * TILE_SIZE;
+
+            // Find ore node with available slots
+            let targetOre = findBestOreNode(reconstructorCenterX, reconstructorCenterY, targetOreType);
+
+            if (!targetOre) {
+                const fallbackType = targetOreType === 'copper' ? 'lead' : 'copper';
+                targetOre = findBestOreNode(reconstructorCenterX, reconstructorCenterY, fallbackType);
+            }
+
+            if (targetOre) {
+                minerUnits.push({
+                    x: spawnX,
+                    y: spawnY,
+                    targetX: targetOre.x,
+                    targetY: targetOre.y,
+                    oreType: targetOre.type,
+                    miningCooldown: 0,
+                    health: CONFIG.MINER_HEALTH,
+                    maxHealth: CONFIG.MINER_HEALTH,
+                    // Upgraded inventory - 60 capacity instead of 30
+                    inventory: 0,
+                    maxInventory: 60,
+                    state: 'mining',
+                    homeX: reconstructorCenterX,
+                    homeY: reconstructorCenterY,
+                    // Faster movement
+                    speed: CONFIG.MINER_BASE_SPEED * 1.5,
+                    returnSpeed: CONFIG.MINER_RETURN_SPEED * 1.5
+                });
+                spawnParticles(spawnX, spawnY, 0x5599ff, 12);
             }
         }
 
@@ -2408,13 +2550,18 @@
 
         // Unified item delivery/output handling - replaces duplicate code
         // @param {Object} building - Source building
-        // @param {Object} target - Target building/structure  
+        // @param {Object} target - Target building/structure
         // @param {number} targetTileX - X coordinate of target tile
         // @param {number} targetTileY - Y coordinate of target tile
         // @param {string} itemType - Type of resource
         // @param {boolean} isMovingItem - Whether this is an item on a conveyor (vs direct output)
         // @returns {boolean} - Whether delivery/output was successful
         function deliverItem(building, target, targetTileX, targetTileY, itemType, isMovingItem = false) {
+            // Use master building if target is a tile reference
+            if (target && target.isTileRef) {
+                target = target.master;
+            }
+
             if (target.type === 'core') {
                 resources[itemType] = (resources[itemType] || 0) + 1;
                 updateResourceUI();
@@ -2470,6 +2617,16 @@
                     if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
                     return true;
                 }
+            } else if (target.type === 'reconstructor') {
+                if (itemType === 'titanium' && target.titaniumStored < 100) {
+                    target.titaniumStored++;
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    return true;
+                } else if (itemType === 'silicon' && target.siliconStored < 100) {
+                    target.siliconStored++;
+                    if (isMovingItem) spawnParticles(targetTileX * TILE_SIZE + TILE_SIZE/2, targetTileY * TILE_SIZE + TILE_SIZE/2, getOreColor(itemType), 3);
+                    return true;
+                }
             } else if ((target.type === 'turret' || target.type === 'scatter' || target.type === 'alloy-turret' || target.type === 'stormer') &&
                        BUILDINGS[target.type].ammoType === itemType &&
                        target.ammo < (target.maxAmmo || 20)) {
@@ -2519,6 +2676,11 @@
          * @returns {boolean} - Whether item was delivered/moved
          */
         function handleItemTarget(item, target, nextX, nextY, dir, targetWorldX, targetWorldY, toRemove, idx) {
+            // Use master building if target is a tile reference
+            if (target && target.isTileRef) {
+                target = target.master;
+            }
+
             if (target.type === 'core') {
                 resources[item.type] = (resources[item.type] || 0) + 1;
                 updateResourceUI();
@@ -2550,13 +2712,13 @@
                     return true;
                 }
             } else if (target.type === 'silicon-smelter') {
-                if (item.type === 'sand' && target.sandStored < 10) {
-                    target.sandStored++;
+                if (item.type === 'sand' && (target.sandStored || 0) < 10) {
+                    target.sandStored = (target.sandStored || 0) + 1;
                     spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
                     toRemove.push(idx);
                     return true;
-                } else if (item.type === 'coal' && target.coalStored < 10) {
-                    target.coalStored++;
+                } else if (item.type === 'coal' && (target.coalStored || 0) < 10) {
+                    target.coalStored = (target.coalStored || 0) + 1;
                     spawnParticles(item.worldX, item.worldY, getOreColor(item.type), 3);
                     toRemove.push(idx);
                     return true;
@@ -3123,7 +3285,8 @@
             if (miningCooldown > 0) {
                 miningCooldown -= delta;
             }
-            if (miningMode && miningCooldown <= 0 && player.respawnTimer <= 0) {
+            // Manual mining now done by clicking ore nodes directly
+            if (miningTarget && miningCooldown <= 0 && player.respawnTimer <= 0) {
                 manualMine();
                 miningCooldown = 200; // Mine every 200ms (faster)
             }
@@ -3142,8 +3305,12 @@
                 player.x += moveX;
                 player.y += moveY;
 
-                // Update angle based on movement direction
-                if (moveX !== 0 || moveY !== 0) {
+                // Update angle based on movement direction OR building rotation when placing
+                if (selectedBuilding && selectedBuilding !== 'delete') {
+                    // Face the direction of the building being placed
+                    const dir = getDirection(rotation);
+                    player.angle = Math.atan2(dir.y, dir.x);
+                } else if (moveX !== 0 || moveY !== 0) {
                     player.angle = Math.atan2(moveY, moveX);
                 }
 
@@ -3157,7 +3324,7 @@
                 }
 
                 const pointer = scene.input.activePointer;
-                if (pointer.isDown && pointer.leftButtonDown() && !selectedBuilding && !isDragging && !miningMode && player.fireCooldown <= 0) {
+                if (pointer.isDown && pointer.leftButtonDown() && !selectedBuilding && !isDragging && player.fireCooldown <= 0) {
                     // Calculate target position in world coordinates
                     const targetWorld = screenToWorld(pointer.x, pointer.y);
 
@@ -3200,6 +3367,12 @@
             camera.y = Math.max(0, Math.min(MAP_HEIGHT * TILE_SIZE - viewHeight, camera.y));
 
             graphics.clear();
+
+            // Cleanup item text objects from previous frame
+            if (this.itemTexts) {
+                this.itemTexts.forEach(text => text.destroy());
+                this.itemTexts = [];
+            }
 
             // Apply zoom - scale graphics and reset position
             graphics.setScale(zoom);
@@ -3880,6 +4053,147 @@
                 }
             }
 
+            // Update miner units (upgraded - faster, more capacity)
+            for (let i = minerUnits.length - 1; i >= 0; i--) {
+                const unit = minerUnits[i];
+
+                if (!unit.state) unit.state = 'mining';
+                if (!unit.inventory) unit.inventory = 0;
+
+                const core = buildings.find(b => b.type === 'core');
+                if (!core) {
+                    minerUnits.splice(i, 1);
+                    continue;
+                }
+
+                let targetWorldX, targetWorldY;
+                const isReturning = unit.state === 'returning';
+
+                if (isReturning && core) {
+                    targetWorldX = (core.x + 1.5) * TILE_SIZE;
+                    targetWorldY = (core.y + 1.5) * TILE_SIZE;
+                } else {
+                    targetWorldX = unit.targetX;
+                    targetWorldY = unit.targetY;
+                }
+
+                const dx = targetWorldX - unit.x;
+                const dy = targetWorldY - unit.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+
+                // Use upgraded speeds (1.5x faster)
+                const unitSpeed = isReturning ? (unit.returnSpeed || CONFIG.MINER_RETURN_SPEED * 1.5) : (unit.speed || CONFIG.MINER_BASE_SPEED * 1.5);
+
+                if (distance > CONFIG.MINER_INTERACTION_DISTANCE) {
+                    unit.isMoving = true;
+                    unit.moveAngle = Math.atan2(dy, dx);
+
+                    // Avoidance steering - check all other units
+                    let steerX = 0;
+                    let steerY = 0;
+                    const avoidRadius = CONFIG.MINER_AVOIDANCE_RADIUS;
+
+                    for (const other of minerUnits) {
+                        if (other === unit) continue;
+                        const odx = other.x - unit.x;
+                        const ody = other.y - unit.y;
+                        const odist = Math.sqrt(odx * odx + ody * ody);
+
+                        if (odist < avoidRadius && odist > 0.1) {
+                            const avoidStrength = 1 - (odist / avoidRadius);
+                            const perpX = -ody;
+                            const perpY = odx;
+                            const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
+
+                            if (perpDist > 0) {
+                                steerX += (perpX / perpDist) * avoidStrength;
+                                steerY += (perpY / perpDist) * avoidStrength;
+                            }
+                        }
+                    }
+
+                    const steerMag = Math.sqrt(steerX * steerX + steerY * steerY);
+                    if (steerMag > 0.01) {
+                        const finalAngle = Math.atan2(dy + steerY * 0.3, dx + steerX * 0.3);
+                        unit.x += Math.cos(finalAngle) * unitSpeed;
+                        unit.y += Math.sin(finalAngle) * unitSpeed;
+                    } else {
+                        unit.x += (dx / distance) * unitSpeed;
+                        unit.y += (dy / distance) * unitSpeed;
+                    }
+
+                    // Collision resolution
+                    for (const other of minerUnits) {
+                        if (other === unit) continue;
+                        const colDx = other.x - unit.x;
+                        const colDy = other.y - unit.y;
+                        const colDist = Math.sqrt(colDx * colDx + colDy * colDy);
+                        const minDist = CONFIG.MINER_COLLISION_RADIUS;
+
+                        if (colDist < minDist && colDist > 0.1) {
+                            const pushDist = (minDist - colDist) / 2;
+                            const pushAngle = Math.atan2(colDy, colDx);
+                            unit.x -= Math.cos(pushAngle) * pushDist;
+                            unit.y -= Math.sin(pushAngle) * pushDist;
+                            other.x += Math.cos(pushAngle) * pushDist;
+                            other.y += Math.sin(pushAngle) * pushDist;
+                        }
+                    }
+                } else {
+                    unit.isMoving = false;
+
+                    if (isReturning) {
+                        resources[unit.oreType] = (resources[unit.oreType] || 0) + unit.inventory;
+                        unit.inventory = 0;
+                        updateResourceUI();
+
+                        const targetOreType = (resources.copper || 0) > (resources.lead || 0) ? 'lead' : 'copper';
+                        let targetOre = findBestOreNode(unit.homeX, unit.homeY, targetOreType);
+
+                        if (!targetOre) {
+                            const fallbackType = targetOreType === 'copper' ? 'lead' : 'copper';
+                            targetOre = findBestOreNode(unit.homeX, unit.homeY, fallbackType);
+                        }
+
+                        if (targetOre) {
+                            unit.targetX = targetOre.x;
+                            unit.targetY = targetOre.y;
+                            unit.oreType = targetOre.type;
+                            unit.state = 'mining';
+                        }
+                    } else {
+                        if (unit.miningCooldown <= 0) {
+                            if (oreMap[Math.floor(unit.targetY / TILE_SIZE)] &&
+                                oreMap[Math.floor(unit.targetY / TILE_SIZE)][Math.floor(unit.targetX / TILE_SIZE)]) {
+                                unit.inventory++;
+                                unit.miningCooldown = CONFIG.MINER_MINING_COOLDOWN * 0.6; // 40% faster mining
+
+                                if (unit.inventory >= unit.maxInventory) {
+                                    unit.state = 'returning';
+                                }
+                            }
+                        } else {
+                            unit.miningCooldown -= delta;
+                        }
+                    }
+                }
+
+                // Take damage from nearby enemies
+                for (const enemy of enemies) {
+                    const edx = enemy.x - unit.x;
+                    const edy = enemy.y - unit.y;
+                    const edist = Math.sqrt(edx * edx + edy * edy);
+                    if (edist < TILE_SIZE) {
+                        unit.health -= 0.1;
+                    }
+                }
+
+                if (unit.health <= 0) {
+                    spawnParticles(unit.x, unit.y, 0x5599ff, 10);
+                    minerUnits.splice(i, 1);
+                }
+            }
+
             // Draw items using world coordinates
             items.forEach(item => {
                 const screenX = item.worldX - camera.x;
@@ -4067,6 +4381,116 @@
                     graphics.fillRect(screenX - 10, screenY + 21, 20, 2);
                     graphics.fillStyle(getOreColor(miner.oreType));
                     graphics.fillRect(screenX - 10, screenY + 21, 20 * invPct, 2);
+                }
+            });
+
+            // Draw miner units (upgraded - ship-like design)
+            minerUnits.forEach(unit => {
+                const screenX = unit.x - camera.x;
+                const screenY = unit.y - camera.y;
+
+                if (screenX > -30 && screenX < window.innerWidth + 30 &&
+                    screenY > -30 && screenY < window.innerHeight + 30) {
+
+                    const isReturning = unit.state === 'returning';
+                    const core = buildings.find(b => b.type === 'core');
+
+                    // Draw mining laser when at target
+                    let targetWorldX, targetWorldY;
+                    if (isReturning && core) {
+                        targetWorldX = (core.x + 1.5) * TILE_SIZE;
+                        targetWorldY = (core.y + 1.5) * TILE_SIZE;
+                    } else {
+                        targetWorldX = unit.targetX * TILE_SIZE + TILE_SIZE / 2;
+                        targetWorldY = unit.targetY * TILE_SIZE + TILE_SIZE / 2;
+                    }
+                    const distToTarget = Math.sqrt((unit.x - targetWorldX)**2 + (unit.y - targetWorldY)**2);
+
+                    if (!isReturning && distToTarget <= TILE_SIZE * 1.5) {
+                        const targetScreenX = targetWorldX - camera.x;
+                        const targetScreenY = targetWorldY - camera.y;
+                        const laserPulse = Math.sin(Date.now() / 60) * 0.3 + 0.7;
+
+                        // Blue laser for upgraded units
+                        graphics.lineStyle(14, 0x0088ff, laserPulse * 0.4);
+                        graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+                        graphics.lineStyle(8, 0x44aaff, laserPulse * 0.8);
+                        graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+                        graphics.lineStyle(4, 0xccddff, laserPulse);
+                        graphics.lineBetween(screenX, screenY, targetScreenX, targetScreenY);
+
+                        graphics.fillStyle(0x0088ff, laserPulse * 0.8);
+                        graphics.fillCircle(targetScreenX, targetScreenY, 12);
+                        graphics.fillStyle(0xffffff, laserPulse * 0.7);
+                        graphics.fillCircle(targetScreenX, targetScreenY, 6);
+                    }
+
+                    // Ship shadow
+                    graphics.fillStyle(0x000000, 0.25);
+                    graphics.fillEllipse(screenX + 3, screenY + 14, 14, 5);
+
+                    // Ship hull - larger, more robust
+                    const hullColor = isReturning ? 0x5a5aaa : 0x3a6a9a;
+                    const highlightColor = isReturning ? 0x8a8aff : 0x5a9aff;
+
+                    // Main hull body
+                    graphics.fillStyle(hullColor);
+                    graphics.fillRoundedRect(screenX - 10, screenY - 6, 20, 12, 5);
+
+                    // Hull plating detail
+                    graphics.fillStyle(highlightColor, 0.7);
+                    graphics.fillRect(screenX - 8, screenY - 4, 16, 4);
+
+                    // Cockpit/command center
+                    graphics.fillStyle(0x2a4a6a);
+                    graphics.fillRoundedRect(screenX - 4, screenY - 5, 8, 6, 2);
+
+                    // Engine glow
+                    const enginePulse = Math.sin(Date.now() / 100) * 0.3 + 0.7;
+                    graphics.fillStyle(0x5599ff, enginePulse);
+                    graphics.fillCircle(screenX - 9, screenY, 3);
+                    graphics.fillCircle(screenX + 9, screenY, 3);
+
+                    // Thruster trails when moving
+                    if (unit.isMoving) {
+                        graphics.lineStyle(3, 0x5599ff, enginePulse * 0.5);
+                        graphics.lineBetween(screenX - 9, screenY, screenX - 14, screenY);
+                        graphics.lineBetween(screenX + 9, screenY, screenX + 14, screenY);
+                    }
+
+                    // Bridge window
+                    const windowPulse = Math.sin(Date.now() / 250) * 0.2 + 0.8;
+                    graphics.fillStyle(0x88ddff, windowPulse);
+                    graphics.fillRect(screenX - 2, screenY - 3, 4, 2);
+
+                    // Cargo bay indicator
+                    if (unit.inventory && unit.inventory > 0) {
+                        const oreColor = getOreColor(unit.oreType);
+                        graphics.fillStyle(oreColor, 0.9);
+                        graphics.fillRoundedRect(screenX - 5, screenY + 3, 10, 4, 1);
+                        const fillPct = unit.inventory / unit.maxInventory;
+                        graphics.fillStyle(0xffffff, 0.6);
+                        graphics.fillRect(screenX - 4, screenY + 4, 8 * fillPct, 2);
+                    }
+
+                    // Health bar
+                    const healthPct = unit.health / unit.maxHealth;
+                    graphics.fillStyle(0x222222);
+                    graphics.fillRect(screenX - 13, screenY + 16, 26, 5);
+                    graphics.fillStyle(0x333333);
+                    graphics.fillRect(screenX - 12, screenY + 17, 24, 3);
+                    const healthColor = healthPct > 0.6 ? 0x4CAF50 : (healthPct > 0.3 ? 0xffaa00 : 0xff4444);
+                    graphics.fillStyle(healthColor);
+                    graphics.fillRect(screenX - 12, screenY + 17, 24 * healthPct, 3);
+
+                    // Inventory bar (larger capacity - 60)
+                    const invPct = (unit.inventory || 0) / (unit.maxInventory || 60);
+                    graphics.fillStyle(0x222222);
+                    graphics.fillRect(screenX - 13, screenY + 22, 26, 4);
+                    graphics.fillStyle(0x333333);
+                    graphics.fillRect(screenX - 12, screenY + 23, 24, 2);
+                    graphics.fillStyle(getOreColor(unit.oreType));
+                    graphics.fillRect(screenX - 12, screenY + 23, 24 * invPct, 2);
                 }
             });
 
@@ -5227,7 +5651,7 @@
                     graphics.fillRect(screenX, screenY, TILE_SIZE * width, TILE_SIZE * height);
 
                     // Draw direction arrow in center for rotatable buildings
-                    if (isDrill || selectedBuilding === 'conveyor' || selectedBuilding === 'alloy-conveyor' || selectedBuilding === 'graphite-press' || selectedBuilding === 'silicon-smelter' || selectedBuilding === 'alloy-factory' || selectedBuilding === 'thermal-generator' || selectedBuilding === 'payload-conveyor') {
+                    if (isDrill || selectedBuilding === 'conveyor' || selectedBuilding === 'alloy-conveyor' || selectedBuilding === 'graphite-press' || selectedBuilding === 'silicon-smelter' || selectedBuilding === 'alloy-factory' || selectedBuilding === 'thermal-generator' || selectedBuilding === 'payload-conveyor' || selectedBuilding === 'miner-constructor' || selectedBuilding === 'reconstructor' || selectedBuilding === 'bridge-conveyor') {
                         const centerX = screenX + (TILE_SIZE * width) / 2;
                         const centerY = screenY + (TILE_SIZE * height) / 2;
                         drawArrow(centerX, centerY, rotation, 0xffffff);
@@ -5454,7 +5878,7 @@
             graphics.fillCircle(warn2.x, warn2.y, 1);
 
             // Mining laser - yellow beam to target ore (wider and brighter)
-            if (miningMode && miningTarget) {
+            if (miningTarget) {
                 const targetScreenX = miningTarget.x - camera.x;
                 const targetScreenY = miningTarget.y - camera.y;
 
@@ -5478,11 +5902,6 @@
                 graphics.fillCircle(targetScreenX, targetScreenY, 12);
                 graphics.fillStyle(0xffffff, laserPulse * 0.6);
                 graphics.fillCircle(targetScreenX, targetScreenY, 6);
-            } else if (miningMode) {
-                // Show mining mode active indicator
-                const miningPulse = Math.sin(Date.now() / 150) * 0.3 + 0.7;
-                graphics.lineStyle(2, 0x44ff44, miningPulse * 0.6);
-                graphics.strokeCircle(screenX, screenY, 30);
             }
         }
 
@@ -6050,6 +6469,83 @@
                     graphics.fillRect(px + 4, py + 4, (consW - 8) * progress, 3);
                 }
 
+                // Direction arrow showing output direction
+                drawArrow(px + consW/2, py + consH/2, b.rotation, 0x44ff44);
+
+            } else if (b.type === 'reconstructor') {
+                // Reconstructor - 2x2 building for upgrading drones to miner units
+                const reconW = TILE_SIZE * 2;
+                const reconH = TILE_SIZE * 2;
+                const centerX = px + reconW/2;
+                const centerY = py + reconH/2;
+
+                // Base platform - blue tech theme
+                graphics.fillStyle(0x2a3a5a);
+                graphics.fillRoundedRect(px + 2, py + 2, reconW - 4, reconH - 4, 6);
+
+                // Upgrade chamber walls
+                graphics.fillStyle(0x3a5a7a);
+                graphics.fillRoundedRect(px + 8, py + 8, reconW - 16, reconH - 16, 4);
+
+                // Tech panels on sides
+                graphics.fillStyle(0x4a7a9a);
+                graphics.fillRect(px + 4, py + 12, 6, reconH - 24);
+                graphics.fillRect(px + reconW - 10, py + 12, 6, reconH - 24);
+
+                // Energy core rings
+                graphics.lineStyle(2, 0x5599ff, 0.6);
+                graphics.strokeCircle(centerX, centerY, 16);
+                graphics.strokeCircle(centerX, centerY, 12);
+                graphics.strokeCircle(centerX, centerY, 8);
+
+                // Pulsing energy core
+                const pulse = Math.sin(Date.now() / 300) * 0.3 + 0.7;
+                graphics.fillStyle(0x5599ff, pulse * 0.5);
+                graphics.fillCircle(centerX, centerY, 10);
+
+                // Crafting animation when upgrading
+                if (b.craftProgress > 0) {
+                    const progress = b.craftProgress / BUILDINGS['reconstructor'].craftTime;
+
+                    // Rotating upgrade effect
+                    const upgradeAngle = (Date.now() / 100) % (Math.PI * 2);
+                    graphics.lineStyle(2, 0x44ffff, 0.8);
+                    for (let i = 0; i < 4; i++) {
+                        const a = upgradeAngle + i * Math.PI / 2;
+                        const x1 = centerX + Math.cos(a) * 18;
+                        const y1 = centerY + Math.sin(a) * 18;
+                        const x2 = centerX + Math.cos(a) * 22;
+                        const y2 = centerY + Math.sin(a) * 22;
+                        graphics.lineBetween(x1, y1, x2, y2);
+                    }
+
+                    // Assembly particles
+                    graphics.fillStyle(0x44ffff, pulse * 0.6);
+                    graphics.fillCircle(centerX, centerY, 14);
+                }
+
+                // Storage indicators for titanium and silicon
+                if (b.titaniumStored > 0) {
+                    const titaniumBar = Math.min(1, b.titaniumStored / 100);
+                    graphics.fillStyle(0x4a7c9b);
+                    graphics.fillRect(px + 4, py + reconH - 8, 20 * titaniumBar, 4);
+                }
+                if (b.siliconStored > 0) {
+                    const siliconBar = Math.min(1, b.siliconStored / 100);
+                    graphics.fillStyle(0xff9900);
+                    graphics.fillRect(px + reconW - 24, py + reconH - 8, 20 * siliconBar, 4);
+                }
+
+                // Craft progress bar
+                if (b.craftProgress > 0) {
+                    const progress = b.craftProgress / BUILDINGS['reconstructor'].craftTime;
+                    graphics.fillStyle(0x5599ff);
+                    graphics.fillRect(px + 4, py + 4, (reconW - 8) * progress, 3);
+                }
+
+                // Direction arrow
+                drawArrow(px + reconW/2, py + reconH/2, b.rotation, 0x5599ff);
+
             } else if (b.type === 'conveyor' || b.type === 'alloy-conveyor') {
                 // Conveyor belt with proper turns - proportional to straight conveyors
                 const isAlloy = b.type === 'alloy-conveyor';
@@ -6297,6 +6793,19 @@
                     }
                 }
 
+            } else if (b.type === 'bridge-conveyor') {
+                // Bridge conveyor - teleports items
+                graphics.fillStyle(0x334455);
+                graphics.fillRoundedRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, 3);
+
+                // Teleportation effect
+                const pulse = Math.sin(Date.now() / 200) * 0.3 + 0.7;
+                graphics.fillStyle(0x5566ff, pulse * 0.5);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 8);
+
+                // Direction arrow
+                drawArrow(px + TILE_SIZE/2, py + TILE_SIZE/2, b.rotation, 0x8899ff);
+
             } else if (b.type === 'payload-conveyor') {
                 // Payload conveyor - 2x2 heavy-duty conveyor for drones
                 const convW = TILE_SIZE * 2;
@@ -6524,12 +7033,13 @@
 
                 buildings.forEach(other => {
                     if (other === b) return;
-                    // Connect to power sources, other power nodes, and all power consumers
+                    // Connect to power sources, other power nodes, batteries, and all power consumers
                     const isPowerSource = other.type === 'generator' || other.type === 'thermal-generator';
                     const isPowerNode = other.type === 'power-node' || other.type === 'large-power-node';
+                    const isBattery = other.type === 'battery' || other.type === 'large-battery';
                     const isPowerConsumer = other.type === 'laser' || other.type === 'alloy-factory' || other.type === 'silicon-smelter' || other.type === 'repair' || other.type === 'miner-constructor';
 
-                    if (!isPowerSource && !isPowerNode && !isPowerConsumer) return;
+                    if (!isPowerSource && !isPowerNode && !isBattery && !isPowerConsumer) return;
 
                     const ow = other.width || 1;
                     const oh = other.height || 1;
@@ -6606,9 +7116,10 @@
                     if (other === b) return;
                     const isPowerSource = other.type === 'generator' || other.type === 'thermal-generator';
                     const isPowerNode = other.type === 'power-node' || other.type === 'large-power-node';
+                    const isBattery = other.type === 'battery' || other.type === 'large-battery';
                     const isPowerConsumer = other.type === 'laser' || other.type === 'alloy-factory' || other.type === 'silicon-smelter' || other.type === 'repair' || other.type === 'miner-constructor';
 
-                    if (!isPowerSource && !isPowerNode && !isPowerConsumer) return;
+                    if (!isPowerSource && !isPowerNode && !isBattery && !isPowerConsumer) return;
 
                     const ow = other.width || 1;
                     const oh = other.height || 1;
@@ -6623,6 +7134,57 @@
                         graphics.lineBetween(centerX, centerY, screenOx, screenOy);
                     }
                 });
+
+            } else if (b.type === 'battery') {
+                // Battery - 1x1 with charge indicator
+                graphics.fillStyle(0x2a4a2a);
+                graphics.fillRoundedRect(px + 2, py + 2, TILE_SIZE - 4, TILE_SIZE - 4, 4);
+
+                // Battery terminals on top
+                graphics.fillStyle(0x666666);
+                graphics.fillRect(px + 8, py + 4, 4, 3);
+                graphics.fillRect(px + TILE_SIZE - 12, py + 4, 4, 3);
+
+                // Charge level indicator
+                const chargePct = (b.powerStored || 0) / (b.maxPowerStorage || 1);
+                const chargeHeight = Math.floor((TILE_SIZE - 12) * chargePct);
+                const chargeColor = chargePct > 0.7 ? 0x44ff44 : (chargePct > 0.3 ? 0xffaa00 : 0xff4444);
+                graphics.fillStyle(chargeColor, 0.6);
+                graphics.fillRect(px + 6, py + TILE_SIZE - 6 - chargeHeight, TILE_SIZE - 12, chargeHeight);
+
+                // Battery icon/label
+                graphics.fillStyle(0xffffff, 0.7);
+                graphics.fillCircle(px + TILE_SIZE/2, py + TILE_SIZE/2, 2);
+
+            } else if (b.type === 'large-battery') {
+                // Large Battery - 2x2 with detailed charge display
+                const battW = TILE_SIZE * 2;
+                const battH = TILE_SIZE * 2;
+
+                graphics.fillStyle(0x2a4a2a);
+                graphics.fillRoundedRect(px + 4, py + 4, battW - 8, battH - 8, 8);
+
+                // Battery terminals
+                graphics.fillStyle(0x666666);
+                graphics.fillRect(px + 16, py + 8, 8, 6);
+                graphics.fillRect(px + battW - 24, py + 8, 8, 6);
+
+                // Charge level with segments
+                const largChargePct = (b.powerStored || 0) / (b.maxPowerStorage || 1);
+                const segments = 8;
+                for (let i = 0; i < segments; i++) {
+                    const segmentThreshold = i / segments;
+                    if (largChargePct > segmentThreshold) {
+                        const segColor = i / segments > 0.7 ? 0x44ff44 : (i / segments > 0.3 ? 0xffaa00 : 0xff4444);
+                        graphics.fillStyle(segColor, 0.7);
+                        const segY = py + battH - 12 - Math.floor(i * (battH - 20) / segments);
+                        graphics.fillRect(px + 12, segY, battW - 24, Math.floor((battH - 20) / segments) - 2);
+                    }
+                }
+
+                // Center power icon
+                graphics.fillStyle(0xffffff, 0.8);
+                graphics.fillCircle(px + battW/2, py + battH/2, 6);
 
             } else if (b.type === 'turret') {
                 // Duo turret - realistic top-down with rotation and textures
